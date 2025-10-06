@@ -1,0 +1,3358 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinançasPro - Gerenciamento de Finanças Pessoais</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Confetti para celebrações -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <!-- jsPDF para exportação em PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Fontes -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            DEFAULT: '#1e3a8a', // azul escuro
+                            light: '#3b82f6',
+                        },
+                        accent: {
+                            DEFAULT: '#10b981', // verde-acento
+                            light: '#34d399',
+                        },
+                    },
+                    borderRadius: {
+                        '2xl': '1rem',
+                    },
+                },
+            },
+        }
+    </script>
+    
+    <style type="text/css">
+        /* Estilos personalizados */
+        body {
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        .animate-count {
+            transition: all 0.8s ease-out;
+        }
+        
+        .card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-3px);
+        }
+        
+        /* Animações */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        
+        /* Skeleton loading */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+        }
+        
+        .dark .skeleton {
+            background: linear-gradient(90deg, #374151 25%, #1f2937 50%, #374151 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+        }
+        
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        /* Modal animations */
+        .modal {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        .modal-exit {
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        .modal-exit-active {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        
+        /* Progress bar animation */
+        .progress-bar-fill {
+            transition: width 1s ease-out;
+        }
+        
+        /* Estilos específicos para mobile */
+        @media (max-width: 768px) {
+            .card {
+                border-radius: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .modal {
+                border-radius: 1.5rem 1.5rem 0 0;
+                margin: 0;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            
+            .bottom-nav-active {
+                color: #3b82f6 !important;
+            }
+            
+            .quick-action-btn {
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+            
+            .quick-action-btn:hover {
+                transform: scale(1.1);
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+            }
+            
+            /* Melhor espaçamento para inputs em mobile */
+            input, select, textarea {
+                font-size: 16px; /* Previne zoom no iOS */
+            }
+            
+            /* Animações para mobile */
+            @keyframes slideUp {
+                from { transform: translateY(100%); }
+                to { transform: translateY(0); }
+            }
+            
+            .animate-slide-up {
+                animation: slideUp 0.3s ease-out;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
+    
+    <!-- Header -->
+    <header class="bg-white dark:bg-gray-800 shadow-sm z-10 sticky top-0">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <button id="sidebar-toggle" class="md:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="flex items-center">
+                    <i class="fas fa-wallet text-primary-light dark:text-accent mr-2 text-xl"></i>
+                    <h1 class="text-xl font-bold">FinançasPro</h1>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" aria-label="Alternar tema">
+                    <i class="fas fa-moon dark:hidden"></i>
+                    <i class="fas fa-sun hidden dark:block text-yellow-300"></i>
+                </button>
+                
+                <div class="relative">
+                    <button id="notifications-toggle" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" aria-label="Notificações">
+                        <i class="fas fa-bell"></i>
+                        <span id="notification-badge" class="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">3</span>
+                    </button>
+                    
+                    <div id="notifications-dropdown" class="hidden absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-2xl shadow-lg py-2 z-20">
+                        <h3 class="px-4 py-2 font-semibold border-b border-gray-200 dark:border-gray-700">Notificações</h3>
+                        <div class="max-h-64 overflow-y-auto">
+                            <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                                <p class="text-sm font-medium">Conta de luz vencendo</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Vence em 2 dias - R$ 157,35</p>
+                            </div>
+                            <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                                <p class="text-sm font-medium">Meta quase atingida!</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Faltam R$ 230,00 para "Férias"</p>
+                            </div>
+                            <div class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                                <p class="text-sm font-medium">Gasto acima da média</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Categoria "Alimentação" 35% acima</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="relative">
+                    <button id="profile-toggle" class="flex items-center space-x-2 focus:outline-none">
+                        <div class="w-8 h-8 rounded-full bg-primary-light text-white flex items-center justify-center">
+                            <span class="font-medium">CR</span>
+                        </div>
+                        <span class="hidden md:block font-medium">Cristiano</span>
+                        <i class="fas fa-chevron-down text-xs"></i>
+                    </button>
+                    
+                    <div id="profile-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-2xl shadow-lg py-2 z-20">
+                        <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            <i class="fas fa-user mr-2"></i> Perfil
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            <i class="fas fa-cog mr-2"></i> Configurações
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            <i class="fas fa-file-export mr-2"></i> Exportar dados
+                        </a>
+                        <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            <i class="fas fa-file-import mr-2"></i> Importar dados
+                        </a>
+                        <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                        <a href="#" class="block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Sair
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Sidebar (colapsável em mobile) -->
+        <aside id="sidebar" class="w-64 bg-white dark:bg-gray-800 shadow-sm hidden md:block transition-all duration-300 ease-in-out overflow-y-auto flex-shrink-0">
+            <nav class="p-4 space-y-2">
+                <a href="#dashboard" class="flex items-center space-x-3 px-4 py-3 rounded-2xl bg-primary-light bg-opacity-10 text-primary dark:text-accent font-medium">
+                    <i class="fas fa-chart-pie w-5 text-center"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#transactions" class="flex items-center space-x-3 px-4 py-3 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-exchange-alt w-5 text-center"></i>
+                    <span>Transações</span>
+                </a>
+                <a href="#goals" class="flex items-center space-x-3 px-4 py-3 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-bullseye w-5 text-center"></i>
+                    <span>Metas</span>
+                </a>
+                <a href="#investments" class="flex items-center space-x-3 px-4 py-3 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-chart-line w-5 text-center"></i>
+                    <span>Investimentos</span>
+                </a>
+                <a href="#risk" class="flex items-center space-x-3 px-4 py-3 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-shield-alt w-5 text-center"></i>
+                    <span>Avaliação de Risco</span>
+                </a>
+                
+                <div class="border-t border-gray-200 dark:border-gray-700 my-4"></div>
+                
+                <a href="#reports" class="flex items-center space-x-3 px-4 py-3 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-file-alt w-5 text-center"></i>
+                    <span>Relatórios</span>
+                </a>
+                <a href="#settings" class="flex items-center space-x-3 px-4 py-3 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-cog w-5 text-center"></i>
+                    <span>Configurações</span>
+                </a>
+            </nav>
+            
+            <div class="p-4 mt-4">
+                <div class="bg-gray-100 dark:bg-gray-700 rounded-2xl p-4">
+                    <h3 class="font-medium mb-2">Dica financeira</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-300">Economize 20% da sua renda mensal para criar uma reserva de emergência equivalente a 6 meses de despesas.</p>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Conteúdo principal -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 dark:bg-gray-900 pb-24 md:pb-6">
+            <!-- Dashboard -->
+            <section id="dashboard" class="space-y-6">
+                <!-- Resumo financeiro -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                    <!-- Saldo total -->
+                    <div class="card bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900 dark:to-green-800 rounded-3xl shadow-lg p-6 flex flex-col border border-green-200 dark:border-green-700">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Saldo total</h3>
+                                <p class="text-2xl font-bold mt-1 animate-count" id="total-balance">R$ 0,00</p>
+                            </div>
+                            <span class="rounded-full bg-green-100 dark:bg-green-900 p-2">
+                                <i class="fas fa-wallet text-accent"></i>
+                            </span>
+                        </div>
+                        <div class="flex items-center text-sm">
+                            <span class="text-green-500 dark:text-green-400 flex items-center">
+                                <i class="fas fa-arrow-up mr-1"></i> 12%
+                            </span>
+                            <span class="text-gray-500 dark:text-gray-400 ml-2">vs. mês anterior</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Receitas -->
+                    <div class="card bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 rounded-3xl shadow-lg p-6 flex flex-col border border-blue-200 dark:border-blue-700">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Receitas (mês)</h3>
+                                <p class="text-2xl font-bold mt-1 animate-count" id="income-amount">R$ 0,00</p>
+                            </div>
+                            <span class="rounded-full bg-blue-100 dark:bg-blue-900 p-2">
+                                <i class="fas fa-arrow-down text-primary-light"></i>
+                            </span>
+                        </div>
+                        <div class="flex items-center text-sm">
+                            <span class="text-green-500 dark:text-green-400 flex items-center">
+                                <i class="fas fa-arrow-up mr-1"></i> 8%
+                            </span>
+                            <span class="text-gray-500 dark:text-gray-400 ml-2">vs. mês anterior</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Despesas -->
+                    <div class="card bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900 dark:to-red-800 rounded-3xl shadow-lg p-6 flex flex-col border border-red-200 dark:border-red-700">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Despesas (mês)</h3>
+                                <p class="text-2xl font-bold mt-1 animate-count" id="expense-amount">R$ 0,00</p>
+                            </div>
+                            <span class="rounded-full bg-red-100 dark:bg-red-900 p-2">
+                                <i class="fas fa-arrow-up text-red-500 dark:text-red-400"></i>
+                            </span>
+                        </div>
+                        <div class="flex items-center text-sm">
+                            <span class="text-red-500 dark:text-red-400 flex items-center">
+                                <i class="fas fa-arrow-up mr-1"></i> 5%
+                            </span>
+                            <span class="text-gray-500 dark:text-gray-400 ml-2">vs. mês anterior</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Gráficos e análises -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+                    <!-- Gráfico de fluxo mensal -->
+                    <div class="card bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 lg:col-span-2">
+                        <h3 class="font-medium mb-4">Fluxo financeiro mensal</h3>
+                        <div class="h-64 relative" id="monthly-chart-container">
+                            <div class="skeleton h-64 rounded-lg"></div>
+                            <canvas id="monthly-chart" class="hidden"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Resumo por categorias -->
+                    <div class="card bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+                        <h3 class="font-medium mb-4">Despesas por categoria</h3>
+                        <div class="h-64 relative" id="categories-chart-container">
+                            <div class="skeleton h-64 rounded-lg"></div>
+                            <canvas id="categories-chart" class="hidden"></canvas>
+                        </div>
+                        <div class="mt-4 space-y-3" id="categories-list">
+                            <!-- Categorias serão inseridas via JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Transações recentes e ações rápidas -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+                    <!-- Transações recentes -->
+                    <div class="card bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 lg:col-span-2">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-medium">Transações recentes</h3>
+                            <a href="#transactions" class="text-primary-light dark:text-accent text-sm hover:underline">Ver todas</a>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="text-left text-sm text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                                        <th class="pb-3 font-medium">Descrição</th>
+                                        <th class="pb-3 font-medium">Categoria</th>
+                                        <th class="pb-3 font-medium">Data</th>
+                                        <th class="pb-3 font-medium text-right">Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-transactions">
+                                    <!-- Transações recentes serão inseridas via JavaScript -->
+                                    <tr class="animate-pulse">
+                                        <td colspan="4" class="py-3">
+                                            <div class="skeleton h-6 rounded w-full"></div>
+                                        </td>
+                                    </tr>
+                                    <tr class="animate-pulse">
+                                        <td colspan="4" class="py-3">
+                                            <div class="skeleton h-6 rounded w-full"></div>
+                                        </td>
+                                    </tr>
+                                    <tr class="animate-pulse">
+                                        <td colspan="4" class="py-3">
+                                            <div class="skeleton h-6 rounded w-full"></div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Ações rápidas -->
+                    <div class="card bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+                        <h3 class="font-medium mb-4">Ações rápidas</h3>
+                        <div class="space-y-3">
+                            <button id="new-transaction-btn" class="w-full py-3 px-4 bg-primary hover:bg-primary-light text-white rounded-2xl transition-colors flex items-center justify-center">
+                                <i class="fas fa-plus mr-2"></i> Nova transação
+                            </button>
+                            <button id="new-goal-btn" class="w-full py-3 px-4 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 rounded-2xl transition-colors flex items-center justify-center">
+                                <i class="fas fa-bullseye mr-2"></i> Nova meta
+                            </button>
+                            <button id="new-investment-btn" class="w-full py-3 px-4 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 rounded-2xl transition-colors flex items-center justify-center">
+                                <i class="fas fa-chart-line mr-2"></i> Novo investimento
+                            </button>
+                            <button id="export-data-btn" class="w-full py-3 px-4 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 rounded-2xl transition-colors flex items-center justify-center">
+                                <i class="fas fa-file-export mr-2"></i> Exportar dados
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Transações -->
+            <section id="transactions" class="hidden space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                    <h2 class="text-2xl font-bold">Transações</h2>
+                    <div class="flex flex-col md:flex-row gap-3">
+                        <div class="relative">
+                            <input type="text" id="transaction-search" placeholder="Buscar transações..." class="w-full md:w-64 pl-10 pr-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent">
+                            <i class="fas fa-search absolute left-4 top-3 text-gray-400"></i>
+                        </div>
+                        <div class="flex gap-2">
+                            <select id="transaction-filter-date" class="px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent">
+                                <option value="all">Todas as datas</option>
+                                <option value="current-month">Mês atual</option>
+                                <option value="last-month">Mês anterior</option>
+                                <option value="last-3-months">Últimos 3 meses</option>
+                                <option value="custom">Personalizado</option>
+                            </select>
+                            <select id="transaction-filter-category" class="px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent">
+                                <option value="all">Todas as categorias</option>
+                                <!-- Categorias serão inseridas via JavaScript -->
+                            </select>
+                            <button id="new-transaction-btn-2" class="px-4 py-2 bg-primary hover:bg-primary-light text-white rounded-2xl transition-colors flex items-center justify-center">
+                                <i class="fas fa-plus mr-2"></i> Nova
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="text-left text-sm text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                                    <th class="px-6 py-4 font-medium">Descrição</th>
+                                    <th class="px-6 py-4 font-medium">Categoria</th>
+                                    <th class="px-6 py-4 font-medium">Data</th>
+                                    <th class="px-6 py-4 font-medium text-right">Valor</th>
+                                    <th class="px-6 py-4 font-medium text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactions-table">
+                                <!-- Transações serão inseridas via JavaScript -->
+                                <tr class="animate-pulse">
+                                    <td colspan="5" class="px-6 py-4">
+                                        <div class="skeleton h-6 rounded w-full"></div>
+                                    </td>
+                                </tr>
+                                <tr class="animate-pulse">
+                                    <td colspan="5" class="px-6 py-4">
+                                        <div class="skeleton h-6 rounded w-full"></div>
+                                    </td>
+                                </tr>
+                                <tr class="animate-pulse">
+                                    <td colspan="5" class="px-6 py-4">
+                                        <div class="skeleton h-6 rounded w-full"></div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                        <div class="text-sm text-gray-500 dark:text-gray-400">
+                            Mostrando <span id="transactions-count">0</span> transações
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="px-3 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50" disabled>
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="px-3 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50" disabled>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Metas -->
+            <section id="goals" class="hidden space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                    <h2 class="text-2xl font-bold">Metas financeiras</h2>
+                    <button id="new-goal-btn-2" class="px-4 py-2 bg-primary hover:bg-primary-light text-white rounded-2xl transition-colors flex items-center justify-center md:w-auto w-full">
+                        <i class="fas fa-plus mr-2"></i> Nova meta
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6" id="goals-container">
+                    <!-- Metas serão inseridas via JavaScript -->
+                    <div class="animate-pulse">
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 h-64">
+                            <div class="skeleton h-6 w-3/4 rounded mb-4"></div>
+                            <div class="skeleton h-4 w-1/2 rounded mb-8"></div>
+                            <div class="skeleton h-4 rounded mb-2"></div>
+                            <div class="skeleton h-6 rounded mb-6"></div>
+                            <div class="skeleton h-10 rounded"></div>
+                        </div>
+                    </div>
+                    <div class="animate-pulse">
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 h-64">
+                            <div class="skeleton h-6 w-3/4 rounded mb-4"></div>
+                            <div class="skeleton h-4 w-1/2 rounded mb-8"></div>
+                            <div class="skeleton h-4 rounded mb-2"></div>
+                            <div class="skeleton h-6 rounded mb-6"></div>
+                            <div class="skeleton h-10 rounded"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Investimentos -->
+            <section id="investments" class="hidden space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                    <h2 class="text-2xl font-bold">Investimentos</h2>
+                    <button id="new-investment-btn-2" class="px-4 py-2 bg-primary hover:bg-primary-light text-white rounded-2xl transition-colors flex items-center justify-center md:w-auto w-full">
+                        <i class="fas fa-plus mr-2"></i> Novo investimento
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+                    <!-- Resumo de investimentos -->
+                    <div class="card bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 lg:col-span-2">
+                        <h3 class="font-medium mb-4">Desempenho dos investimentos</h3>
+                        <div class="h-64 relative" id="investments-chart-container">
+                            <div class="skeleton h-64 rounded-lg"></div>
+                            <canvas id="investments-chart" class="hidden"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Distribuição de investimentos -->
+                    <div class="card bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+                        <h3 class="font-medium mb-4">Distribuição por tipo</h3>
+                        <div class="h-64 relative" id="investment-distribution-container">
+                            <div class="skeleton h-64 rounded-lg"></div>
+                            <canvas id="investment-distribution" class="hidden"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="text-left text-sm text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                                    <th class="px-6 py-4 font-medium">Nome</th>
+                                    <th class="px-6 py-4 font-medium">Tipo</th>
+                                    <th class="px-6 py-4 font-medium text-right">Valor investido</th>
+                                    <th class="px-6 py-4 font-medium text-right">Valor atual</th>
+                                    <th class="px-6 py-4 font-medium text-right">Rendimento</th>
+                                    <th class="px-6 py-4 font-medium text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="investments-table">
+                                <!-- Investimentos serão inseridos via JavaScript -->
+                                <tr class="animate-pulse">
+                                    <td colspan="6" class="px-6 py-4">
+                                        <div class="skeleton h-6 rounded w-full"></div>
+                                    </td>
+                                </tr>
+                                <tr class="animate-pulse">
+                                    <td colspan="6" class="px-6 py-4">
+                                        <div class="skeleton h-6 rounded w-full"></div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Avaliação de Risco -->
+            <section id="risk" class="hidden space-y-6">
+                <h2 class="text-2xl font-bold mb-6">Avaliação de Risco Financeiro</h2>
+                
+                <div class="grid grid-cols-1 gap-4">
+                    <!-- Índice de risco -->
+                    <div class="card bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+                        <h3 class="font-medium mb-4">Seu índice de risco financeiro</h3>
+                        <div class="flex items-center justify-center mb-6">
+                            <div class="relative w-48 h-48">
+                                <div class="skeleton rounded-full w-48 h-48" id="risk-gauge-skeleton"></div>
+                                <canvas id="risk-gauge" class="hidden"></canvas>
+                                <div class="absolute inset-0 flex items-center justify-center flex-col">
+                                    <span class="text-3xl font-bold" id="risk-score">0</span>
+                                    <span class="text-sm text-gray-500 dark:text-gray-400">de 100</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-lg font-medium mb-2" id="risk-level">Calculando...</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-300" id="risk-description">Analisando seus dados financeiros...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Fatores de risco -->
+                    <div class="card bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+                        <h3 class="font-medium mb-4">Fatores de risco</h3>
+                        <div class="space-y-4" id="risk-factors">
+                            <!-- Fatores de risco serão inseridos via JavaScript -->
+                            <div class="animate-pulse">
+                                <div class="skeleton h-4 w-3/4 rounded mb-2"></div>
+                                <div class="skeleton h-6 rounded"></div>
+                            </div>
+                            <div class="animate-pulse">
+                                <div class="skeleton h-4 w-3/4 rounded mb-2"></div>
+                                <div class="skeleton h-6 rounded"></div>
+                            </div>
+                            <div class="animate-pulse">
+                                <div class="skeleton h-4 w-3/4 rounded mb-2"></div>
+                                <div class="skeleton h-6 rounded"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
+                    <h3 class="font-medium mb-4">Recomendações para reduzir riscos</h3>
+                    <div class="space-y-4" id="risk-recommendations">
+                        <!-- Recomendações serão inseridas via JavaScript -->
+                        <div class="animate-pulse">
+                            <div class="skeleton h-6 w-3/4 rounded mb-2"></div>
+                            <div class="skeleton h-4 rounded"></div>
+                        </div>
+                        <div class="animate-pulse">
+                            <div class="skeleton h-6 w-3/4 rounded mb-2"></div>
+                            <div class="skeleton h-4 rounded"></div>
+                        </div>
+                        <div class="animate-pulse">
+                            <div class="skeleton h-6 w-3/4 rounded mb-2"></div>
+                            <div class="skeleton h-4 rounded"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <!-- Bottom Navigation para Mobile -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-40">
+        <div class="flex items-center justify-around py-2">
+            <button onclick="navigateTo('dashboard')" class="nav-item flex flex-col items-center py-2 px-3 text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-accent transition-colors">
+                <i class="fas fa-chart-pie text-lg mb-1"></i>
+                <span class="text-xs">Dashboard</span>
+            </button>
+            <button onclick="navigateTo('transactions')" class="nav-item flex flex-col items-center py-2 px-3 text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-accent transition-colors">
+                <i class="fas fa-exchange-alt text-lg mb-1"></i>
+                <span class="text-xs">Transações</span>
+            </button>
+            <button onclick="openQuickTransactionModal()" class="flex flex-col items-center py-2 px-3 bg-primary text-white rounded-full -mt-4 shadow-lg">
+                <i class="fas fa-plus text-xl mb-1"></i>
+                <span class="text-xs">Adicionar</span>
+            </button>
+            <button onclick="navigateTo('goals')" class="nav-item flex flex-col items-center py-2 px-3 text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-accent transition-colors">
+                <i class="fas fa-bullseye text-lg mb-1"></i>
+                <span class="text-xs">Metas</span>
+            </button>
+            <button onclick="navigateTo('investments')" class="nav-item flex flex-col items-center py-2 px-3 text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-accent transition-colors">
+                <i class="fas fa-chart-line text-lg mb-1"></i>
+                <span class="text-xs">Investimentos</span>
+            </button>
+        </div>
+    </nav>
+    
+    <!-- Quick Action Buttons para Mobile -->
+    <div class="md:hidden fixed bottom-20 right-4 z-30 flex flex-col space-y-3">
+        <button onclick="openModal('transaction', null, 'income')" class="quick-action-btn bg-green-500 hover:bg-green-600 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105">
+            <i class="fas fa-arrow-down text-xl"></i>
+        </button>
+        <button onclick="openModal('transaction', null, 'expense')" class="quick-action-btn bg-red-500 hover:bg-red-600 text-white rounded-full w-14 h-14 shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105">
+            <i class="fas fa-arrow-up text-xl"></i>
+        </button>
+    </div>
+    
+    <!-- Modal de Nova Transação -->
+    <div id="transaction-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" id="transaction-modal-backdrop"></div>
+        <div class="modal modal-enter absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-2xl shadow-lg p-6 md:max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium" id="transaction-modal-title">Nova transação</h3>
+                <button class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" id="transaction-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="transaction-form" class="space-y-6">
+                <input type="hidden" id="transaction-id">
+                <div>
+                    <label for="transaction-type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Tipo de Transação</label>
+                    <div class="flex space-x-3">
+                        <label class="flex-1">
+                            <input type="radio" name="transaction-type" value="income" class="hidden peer" checked>
+                            <div class="text-center py-4 border-2 border-gray-200 dark:border-gray-700 rounded-2xl peer-checked:bg-green-500 peer-checked:text-white peer-checked:border-green-500 cursor-pointer transition-all duration-200 hover:scale-105">
+                                <i class="fas fa-arrow-down text-xl mb-2 block"></i>
+                                <span class="font-medium">Receita</span>
+                            </div>
+                        </label>
+                        <label class="flex-1">
+                            <input type="radio" name="transaction-type" value="expense" class="hidden peer">
+                            <div class="text-center py-4 border-2 border-gray-200 dark:border-gray-700 rounded-2xl peer-checked:bg-red-500 peer-checked:text-white peer-checked:border-red-500 cursor-pointer transition-all duration-200 hover:scale-105">
+                                <i class="fas fa-arrow-up text-xl mb-2 block"></i>
+                                <span class="font-medium">Despesa</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label for="transaction-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descrição</label>
+                    <input type="text" id="transaction-description" class="w-full px-4 py-4 text-lg rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent focus:border-primary transition-colors" placeholder="Ex: Salário, Supermercado..." required>
+                </div>
+                <div>
+                    <label for="transaction-amount" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Valor (R$)</label>
+                    <input type="text" id="transaction-amount" class="w-full px-4 py-4 text-2xl font-bold rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent focus:border-primary transition-colors" placeholder="0,00" required>
+                </div>
+                <div>
+                    <label for="transaction-category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Categoria</label>
+                    <select id="transaction-category" class="w-full px-4 py-4 text-lg rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent focus:border-primary transition-colors" required>
+                        <!-- Categorias serão inseridas via JavaScript -->
+                    </select>
+                </div>
+                <div>
+                    <label for="transaction-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Data</label>
+                    <input type="date" id="transaction-date" class="w-full px-4 py-4 text-lg rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent focus:border-primary transition-colors" required>
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="transaction-recurring" class="rounded text-primary focus:ring-primary-light dark:focus:ring-accent">
+                    <label for="transaction-recurring" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Transação recorrente</label>
+                </div>
+                <div>
+                    <label for="transaction-attachment" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Anexo (opcional)</label>
+                    <input type="file" id="transaction-attachment" class="w-full px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent">
+                </div>
+                <div class="flex flex-col space-y-3 pt-6">
+                    <button type="submit" class="w-full py-4 bg-primary hover:bg-primary-light text-white rounded-2xl transition-all duration-200 font-medium text-lg shadow-lg hover:shadow-xl">
+                        <i class="fas fa-check mr-2"></i>Salvar Transação
+                    </button>
+                    <button type="button" id="transaction-cancel" class="w-full py-3 border-2 border-gray-200 dark:border-gray-700 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-medium">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal de Nova Meta -->
+    <div id="goal-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" id="goal-modal-backdrop"></div>
+        <div class="modal modal-enter absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium" id="goal-modal-title">Nova meta</h3>
+                <button class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" id="goal-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="goal-form" class="space-y-4">
+                <input type="hidden" id="goal-id">
+                <div>
+                    <label for="goal-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome da meta</label>
+                    <input type="text" id="goal-name" class="w-full px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent" required>
+                </div>
+                <div>
+                    <label for="goal-target" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor alvo (R$)</label>
+                    <input type="text" id="goal-target" class="w-full px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent" placeholder="0,00" required>
+                </div>
+                <div>
+                    <label for="goal-current" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor atual (R$)</label>
+                    <input type="text" id="goal-current" class="w-full px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent" placeholder="0,00" required>
+                </div>
+                <div>
+                    <label for="goal-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data limite</label>
+                    <input type="date" id="goal-date" class="w-full px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent" required>
+                </div>
+                <div>
+                    <label for="goal-icon" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ícone</label>
+                    <select id="goal-icon" class="w-full px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent">
+                        <option value="fa-home">Casa</option>
+                        <option value="fa-car">Carro</option>
+                        <option value="fa-plane">Viagem</option>
+                        <option value="fa-graduation-cap">Educação</option>
+                        <option value="fa-laptop">Tecnologia</option>
+                        <option value="fa-piggy-bank">Economia</option>
+                        <option value="fa-heart">Saúde</option>
+                        <option value="fa-gift">Presente</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" id="goal-cancel" class="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-light text-white rounded-2xl transition-colors">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal de Novo Investimento -->
+    <div id="investment-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" id="investment-modal-backdrop"></div>
+        <div class="modal modal-enter absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium" id="investment-modal-title">Novo investimento</h3>
+                <button class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" id="investment-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="investment-form" class="space-y-4">
+                <input type="hidden" id="investment-id">
+                <div>
+                    <label for="investment-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome do investimento</label>
+                    <input type="text" id="investment-name" class="w-full px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent" required>
+                </div>
+                <div>
+                    <label for="investment-type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
+                    <select id="investment-type" class="w-full px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent" required>
+                        <option value="poupanca">Poupança</option>
+                        <option value="cdb">CDB</option>
+                        <option value="lci">LCI/LCA</option>
+                        <option value="fundos">Fundos de Investimento</option>
+                        <option value="acoes">Ações</option>
+                        <option value="fii">Fundos Imobiliários</option>
+                        <option value="cripto">Criptomoedas</option>
+                        <option value="outros">Outros</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="investment-amount" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor investido (R$)</label>
+                    <input type="text" id="investment-amount" class="w-full px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent" placeholder="0,00" required>
+                </div>
+                <div>
+                    <label for="investment-current" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor atual (R$)</label>
+                    <input type="text" id="investment-current" class="w-full px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent" placeholder="0,00" required>
+                </div>
+                <div>
+                    <label for="investment-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Data de início</label>
+                    <input type="date" id="investment-date" class="w-full px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent" required>
+                </div>
+                <div>
+                    <label for="investment-risk" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nível de risco</label>
+                    <select id="investment-risk" class="w-full px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent" required>
+                        <option value="baixo">Baixo</option>
+                        <option value="medio">Médio</option>
+                        <option value="alto">Alto</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" id="investment-cancel" class="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-light text-white rounded-2xl transition-colors">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal de Contribuição para Meta -->
+    <div id="contribute-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" id="contribute-modal-backdrop"></div>
+        <div class="modal modal-enter absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium">Contribuir para meta</h3>
+                <button class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" id="contribute-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="contribute-form" class="space-y-4">
+                <input type="hidden" id="contribute-goal-id">
+                <div>
+                    <p class="text-gray-700 dark:text-gray-300 mb-2">Meta: <span id="contribute-goal-name" class="font-medium"></span></p>
+                    <p class="text-gray-700 dark:text-gray-300 mb-4">Progresso atual: <span id="contribute-goal-progress" class="font-medium"></span></p>
+                </div>
+                <div>
+                    <label for="contribute-amount" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Valor da contribuição (R$)</label>
+                    <input type="text" id="contribute-amount" class="w-full px-4 py-2 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-light dark:focus:ring-accent" required>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" id="contribute-cancel" class="px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-light text-white rounded-2xl transition-colors">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Script da aplicação -->
+    <script>
+/**
+ * Aplicativo de Finanças Pessoais
+ * 
+ * Este arquivo contém toda a lógica JavaScript para o funcionamento do aplicativo de finanças pessoais,
+ * incluindo gerenciamento de transações, metas, investimentos e avaliação de risco.
+ */
+
+// Constantes e configurações
+const STORAGE_KEY = 'personal_finance_data';
+const CATEGORIES_INCOME = [
+    { id: 'salary', name: 'Salário', icon: 'fa-money-bill-wave' },
+    { id: 'investments', name: 'Investimentos', icon: 'fa-chart-line' },
+    { id: 'freelance', name: 'Freelance', icon: 'fa-laptop-code' },
+    { id: 'gifts', name: 'Presentes', icon: 'fa-gift' },
+    { id: 'other_income', name: 'Outros', icon: 'fa-plus-circle' }
+];
+
+const CATEGORIES_EXPENSE = [
+    { id: 'housing', name: 'Moradia', icon: 'fa-home' },
+    { id: 'food', name: 'Alimentação', icon: 'fa-utensils' },
+    { id: 'transport', name: 'Transporte', icon: 'fa-car' },
+    { id: 'health', name: 'Saúde', icon: 'fa-heartbeat' },
+    { id: 'education', name: 'Educação', icon: 'fa-graduation-cap' },
+    { id: 'entertainment', name: 'Lazer', icon: 'fa-film' },
+    { id: 'shopping', name: 'Compras', icon: 'fa-shopping-bag' },
+    { id: 'bills', name: 'Contas', icon: 'fa-file-invoice' },
+    { id: 'other_expense', name: 'Outros', icon: 'fa-minus-circle' }
+];
+
+// Estado da aplicação
+let appData = {
+    transactions: [],
+    goals: [],
+    investments: [],
+    settings: {
+        currency: 'BRL',
+        language: 'pt-BR',
+        darkMode: false,
+        notifications: true
+    }
+};
+
+// Elementos DOM frequentemente utilizados
+const elements = {};
+
+/**
+ * Formata um valor para moeda (BRL)
+ * @param {number} value - Valor a ser formatado
+ * @param {boolean} symbol - Incluir símbolo da moeda
+ * @returns {string} Valor formatado como moeda
+ */
+function formatCurrency(value, symbol = true) {
+    return new Intl.NumberFormat('pt-BR', {
+        style: symbol ? 'currency' : 'decimal',
+        currency: 'BRL',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(value);
+}
+
+/**
+ * Manipula a entrada de valores monetários em tempo real
+ * @param {Event} event - Evento de input
+ */
+function handleCurrencyInput(event) {
+    const input = event.target;
+    let value = input.value.replace(/[^\d]/g, ''); // Remove tudo exceto dígitos
+    
+    // Se o valor não estiver vazio, formata em tempo real
+    if (value && value.length > 2) {
+        // Insere vírgula antes dos últimos 2 dígitos
+        const formattedValue = value.slice(0, -2) + ',' + value.slice(-2);
+        input.value = formattedValue;
+    }
+}
+
+/**
+ * Formata o valor de entrada para moeda
+ * @param {Event} event - Evento de blur do input
+ */
+function formatCurrencyInput(event) {
+    const input = event.target;
+    let value = input.value.replace(/[^\d,.-]/g, ''); // Remove tudo exceto dígitos, vírgula, ponto e hífen
+    
+    // Se o valor não estiver vazio
+    if (value) {
+        // Se já tem vírgula ou ponto, trata como valor decimal
+        if (value.includes(',') || value.includes('.')) {
+            // Substitui vírgula por ponto para parseFloat
+            value = value.replace(',', '.');
+            const numValue = parseFloat(value);
+            if (!isNaN(numValue)) {
+                input.value = formatCurrency(numValue, false);
+            }
+        } else {
+            // Se é só número, trata como centavos (divide por 100)
+            const numValue = parseFloat(value) / 100;
+            input.value = formatCurrency(numValue, false);
+        }
+    }
+}
+
+/**
+ * Converte string de moeda para número
+ * @param {string} currencyString - String formatada como moeda
+ * @returns {number} Valor numérico
+ */
+function parseCurrency(currencyString) {
+    if (typeof currencyString === 'number') return currencyString;
+    const cleaned = currencyString.replace(/[^\d,]/g, '');
+    const normalized = cleaned.replace(',', '.');
+    return parseFloat(normalized) || 0;
+}
+
+/**
+ * Retorna a cor do risco com base no índice
+ * @param {number} riskIndex - Índice de risco
+ * @returns {string} Cor do risco
+ */
+function getRiskColor(riskIndex) {
+    if (riskIndex >= 80) return 'rgba(34, 197, 94, 0.8)';
+    if (riskIndex >= 60) return 'rgba(59, 130, 246, 0.8)';
+    if (riskIndex >= 40) return 'rgba(245, 158, 11, 0.8)';
+    if (riskIndex >= 20) return 'rgba(249, 115, 22, 0.8)';
+    return 'rgba(239, 68, 68, 0.8)';
+}
+
+/**
+ * Inicializa a aplicação
+ */
+function initApp() {
+    // Carrega dados do localStorage
+    loadData();
+    
+    // Inicializa elementos DOM frequentemente utilizados
+    cacheElements();
+    
+    // Configura manipuladores de eventos
+    setupEventListeners();
+    
+    // Inicializa a interface do usuário
+    initUI();
+    
+    // Inicializa os gráficos
+    setTimeout(() => {
+        initCharts();
+    }, 1000); // Pequeno atraso para simular carregamento
+    
+    // Calcula e exibe o índice de risco
+    setTimeout(() => {
+        calculateRiskIndex();
+    }, 1500);
+    
+    console.log('Aplicativo inicializado com sucesso!');
+}
+
+/**
+ * Armazena referências a elementos DOM frequentemente utilizados
+ */
+function cacheElements() {
+    // Elementos gerais
+    elements.sidebar = document.getElementById('sidebar');
+    elements.themeToggle = document.getElementById('theme-toggle');
+    
+    // Elementos do dashboard
+    elements.totalBalance = document.getElementById('total-balance');
+    elements.incomeAmount = document.getElementById('income-amount');
+    elements.expenseAmount = document.getElementById('expense-amount');
+    elements.recentTransactions = document.getElementById('recent-transactions');
+    elements.categoriesList = document.getElementById('categories-list');
+    
+    // Elementos de transações
+    elements.transactionsTable = document.getElementById('transactions-table');
+    elements.transactionsCount = document.getElementById('transactions-count');
+    elements.transactionSearch = document.getElementById('transaction-search');
+    elements.transactionFilterDate = document.getElementById('transaction-filter-date');
+    elements.transactionFilterCategory = document.getElementById('transaction-filter-category');
+    
+    // Elementos de metas
+    elements.goalsContainer = document.getElementById('goals-container');
+    
+    // Elementos de investimentos
+    elements.investmentsTable = document.getElementById('investments-table');
+    
+    // Elementos de avaliação de risco
+    elements.riskScore = document.getElementById('risk-score');
+    elements.riskLevel = document.getElementById('risk-level');
+    elements.riskDescription = document.getElementById('risk-description');
+    elements.riskFactors = document.getElementById('risk-factors');
+    elements.riskRecommendations = document.getElementById('risk-recommendations');
+    
+    // Elementos de modais
+    elements.transactionModal = document.getElementById('transaction-modal');
+    elements.goalModal = document.getElementById('goal-modal');
+    elements.investmentModal = document.getElementById('investment-modal');
+    elements.contributeModal = document.getElementById('contribute-modal');
+}
+
+/**
+ * Configura todos os manipuladores de eventos
+ */
+function setupEventListeners() {
+    // Navegação
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href').substring(1);
+            navigateTo(targetId);
+        });
+    });
+    
+    // Alternador de tema
+    if (elements.themeToggle) {
+        elements.themeToggle.addEventListener('click', toggleTheme);
+    }
+    
+    // Botões de nova transação
+    const newTransactionBtns = document.querySelectorAll('[id*="new-transaction-btn"]');
+    newTransactionBtns.forEach(btn => {
+        btn.addEventListener('click', () => openModal('transaction'));
+    });
+    
+    // Botões de nova meta
+    const newGoalBtns = document.querySelectorAll('[id*="new-goal-btn"]');
+    newGoalBtns.forEach(btn => {
+        btn.addEventListener('click', () => openModal('goal'));
+    });
+    
+    // Botões de novo investimento
+    const newInvestmentBtns = document.querySelectorAll('[id*="new-investment-btn"]');
+    newInvestmentBtns.forEach(btn => {
+        btn.addEventListener('click', () => openModal('investment'));
+    });
+    
+    // Botão de exportar dados
+    const exportBtn = document.getElementById('export-data-btn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportData);
+    }
+    
+    // Fechamento de modais
+    document.querySelectorAll('[id$="-modal-close"]').forEach(button => {
+        button.addEventListener('click', () => closeModal(button.id.replace('-close', '')));
+    });
+    
+    document.querySelectorAll('[id$="-modal-backdrop"]').forEach(backdrop => {
+        backdrop.addEventListener('click', () => closeModal(backdrop.id.replace('-backdrop', '')));
+    });
+    
+    document.querySelectorAll('[id$="-cancel"]').forEach(button => {
+        button.addEventListener('click', () => closeModal(button.id.replace('-cancel', '-modal')));
+    });
+    
+    // Formulários
+    const transactionForm = document.getElementById('transaction-form');
+    if (transactionForm) {
+        transactionForm.addEventListener('submit', handleTransactionSubmit);
+    }
+    
+    const goalForm = document.getElementById('goal-form');
+    if (goalForm) {
+        goalForm.addEventListener('submit', handleGoalSubmit);
+    }
+    
+    const investmentForm = document.getElementById('investment-form');
+    if (investmentForm) {
+        investmentForm.addEventListener('submit', handleInvestmentSubmit);
+    }
+    
+    const contributeForm = document.getElementById('contribute-form');
+    if (contributeForm) {
+        contributeForm.addEventListener('submit', handleContributeSubmit);
+    }
+    
+    // Filtros de transação
+    if (elements.transactionSearch) {
+        elements.transactionSearch.addEventListener('input', filterTransactions);
+    }
+    if (elements.transactionFilterDate) {
+        elements.transactionFilterDate.addEventListener('change', filterTransactions);
+    }
+    if (elements.transactionFilterCategory) {
+        elements.transactionFilterCategory.addEventListener('change', filterTransactions);
+    }
+    
+    // Formatação de valores monetários
+    document.querySelectorAll('input[id$="-amount"], input[id$="-target"], input[id$="-current"]').forEach(input => {
+        input.addEventListener('blur', formatCurrencyInput);
+        input.addEventListener('input', handleCurrencyInput);
+    });
+    
+    // Atualiza categorias quando tipo de transação muda
+    document.querySelectorAll('input[name="transaction-type"]').forEach(radio => {
+        radio.addEventListener('change', populateCategorySelects);
+    });
+    
+    // Toggle do sidebar em mobile
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            elements.sidebar.classList.toggle('hidden');
+        });
+    }
+    
+    // Dropdowns do header
+    setupHeaderDropdowns();
+}
+
+/**
+ * Configura os dropdowns do header
+ */
+function setupHeaderDropdowns() {
+    // Notificações
+    const notificationsToggle = document.getElementById('notifications-toggle');
+    const notificationsDropdown = document.getElementById('notifications-dropdown');
+    
+    if (notificationsToggle && notificationsDropdown) {
+        notificationsToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            notificationsDropdown.classList.toggle('hidden');
+        });
+    }
+    
+    // Perfil
+    const profileToggle = document.getElementById('profile-toggle');
+    const profileDropdown = document.getElementById('profile-dropdown');
+    
+    if (profileToggle && profileDropdown) {
+        profileToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            profileDropdown.classList.toggle('hidden');
+        });
+    }
+    
+    // Fecha dropdowns ao clicar fora
+    document.addEventListener('click', () => {
+        if (notificationsDropdown) notificationsDropdown.classList.add('hidden');
+        if (profileDropdown) profileDropdown.classList.add('hidden');
+    });
+}
+
+/**
+ * Preenche os selects de categorias de transações
+ */
+function populateCategorySelects() {
+    const transactionCategory = document.getElementById('transaction-category');
+    if (!transactionCategory) return;
+    
+    // Limpa as opções existentes
+    transactionCategory.innerHTML = '';
+    
+    // Adiciona as categorias com base no tipo de transação selecionado
+    const transactionType = document.querySelector('input[name="transaction-type"]:checked');
+    if (!transactionType) return;
+    
+    const categories = transactionType.value === 'income' ? CATEGORIES_INCOME : CATEGORIES_EXPENSE;
+    
+    categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category.id;
+        option.textContent = category.name;
+        transactionCategory.appendChild(option);
+    });
+    
+    // Atualiza o filtro de categorias também
+    updateCategoryFilter();
+}
+
+/**
+ * Atualiza o filtro de categorias
+ */
+function updateCategoryFilter() {
+    const categoryFilter = document.getElementById('transaction-filter-category');
+    if (!categoryFilter) return;
+    
+    // Limpa as opções existentes (exceto "Todas as categorias")
+    const allOption = categoryFilter.querySelector('option[value="all"]');
+    categoryFilter.innerHTML = '';
+    if (allOption) categoryFilter.appendChild(allOption);
+    
+    // Adiciona todas as categorias
+    [...CATEGORIES_INCOME, ...CATEGORIES_EXPENSE].forEach(category => {
+        const option = document.createElement('option');
+        option.value = category.id;
+        option.textContent = category.name;
+        categoryFilter.appendChild(option);
+    });
+}
+
+/**
+ * Inicializa a interface do usuário
+ */
+function initUI() {
+    // Define o tema inicial
+    if (appData.settings.darkMode) {
+        document.documentElement.classList.add('dark');
+    }
+    
+    // Preenche os selects de categorias
+    populateCategorySelects();
+    
+    // Define a data atual nos campos de data
+    const today = new Date().toISOString().split('T')[0];
+    const dateInputs = ['transaction-date', 'goal-date', 'investment-date'];
+    dateInputs.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.value = today;
+    });
+    
+    // Renderiza os dados iniciais
+    renderDashboard();
+    renderTransactions();
+    renderGoals();
+    renderInvestments();
+    
+    // Mostra a seção inicial (dashboard)
+    navigateTo('dashboard');
+}
+
+/**
+ * Carrega dados do localStorage
+ */
+function loadData() {
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    if (savedData) {
+        try {
+            appData = JSON.parse(savedData);
+            console.log('Dados carregados do localStorage');
+        } catch (error) {
+            console.error('Erro ao carregar dados:', error);
+            // Mantém os dados padrão em caso de erro
+        }
+    } else {
+        // Cria alguns dados de exemplo se não houver dados salvos
+        createSampleData();
+        saveData();
+    }
+}
+
+/**
+ * Salva dados no localStorage
+ */
+function saveData() {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+        console.log('Dados salvos no localStorage');
+    } catch (error) {
+        console.error('Erro ao salvar dados:', error);
+        showNotification('Erro ao salvar dados. Verifique o espaço disponível no navegador.', 'error');
+    }
+}
+
+/**
+ * Cria dados de exemplo para demonstração
+ */
+function createSampleData() {
+    const currentDate = new Date();
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(currentDate.getMonth() - 1);
+    
+    // Transações de exemplo
+    appData.transactions = [
+        {
+            id: 'tx1',
+            type: 'income',
+            description: 'Salário',
+            amount: 5000,
+            category: 'salary',
+            date: currentDate.toISOString().split('T')[0],
+            recurring: true
+        },
+        {
+            id: 'tx2',
+            type: 'expense',
+            description: 'Aluguel',
+            amount: 1200,
+            category: 'housing',
+            date: currentDate.toISOString().split('T')[0],
+            recurring: true
+        },
+        {
+            id: 'tx3',
+            type: 'expense',
+            description: 'Supermercado',
+            amount: 650,
+            category: 'food',
+            date: currentDate.toISOString().split('T')[0],
+            recurring: false
+        },
+        {
+            id: 'tx4',
+            type: 'expense',
+            description: 'Internet',
+            amount: 120,
+            category: 'bills',
+            date: currentDate.toISOString().split('T')[0],
+            recurring: true
+        },
+        {
+            id: 'tx5',
+            type: 'income',
+            description: 'Freelance',
+            amount: 1200,
+            category: 'freelance',
+            date: oneMonthAgo.toISOString().split('T')[0],
+            recurring: false
+        }
+    ];
+    
+    // Metas de exemplo
+    appData.goals = [
+        {
+            id: 'goal1',
+            name: 'Viagem para Europa',
+            target: 12000,
+            current: 4500,
+            date: new Date(currentDate.getFullYear() + 1, 5, 15).toISOString().split('T')[0],
+            icon: 'fa-plane'
+        },
+        {
+            id: 'goal2',
+            name: 'Reserva de emergência',
+            target: 15000,
+            current: 7500,
+            date: new Date(currentDate.getFullYear(), currentDate.getMonth() + 6, 1).toISOString().split('T')[0],
+            icon: 'fa-piggy-bank'
+        }
+    ];
+    
+    // Investimentos de exemplo
+    appData.investments = [
+        {
+            id: 'inv1',
+            name: 'CDB Banco XYZ',
+            type: 'cdb',
+            amount: 10000,
+            current: 10650,
+            date: oneMonthAgo.toISOString().split('T')[0],
+            risk: 'baixo'
+        },
+        {
+            id: 'inv2',
+            name: 'Ações PETR4',
+            type: 'acoes',
+            amount: 5000,
+            current: 5300,
+            date: oneMonthAgo.toISOString().split('T')[0],
+            risk: 'alto'
+        }
+    ];
+}
+
+/**
+ * Navega para uma seção específica
+ * @param {string} sectionId - ID da seção para navegar
+ */
+function navigateTo(sectionId) {
+    // Oculta todas as seções
+    document.querySelectorAll('main > section').forEach(section => {
+        section.classList.add('hidden');
+    });
+    
+    // Mostra a seção selecionada
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) {
+        targetSection.classList.remove('hidden');
+    }
+    
+    // Atualiza a navegação ativa do sidebar
+    document.querySelectorAll('nav a').forEach(link => {
+        link.classList.remove('bg-primary-light', 'bg-opacity-10', 'text-primary', 'dark:text-accent', 'font-medium');
+        link.classList.add('hover:bg-gray-100', 'dark:hover:bg-gray-700');
+        
+        if (link.getAttribute('href') === `#${sectionId}`) {
+            link.classList.add('bg-primary-light', 'bg-opacity-10', 'text-primary', 'dark:text-accent', 'font-medium');
+            link.classList.remove('hover:bg-gray-100', 'dark:hover:bg-gray-700');
+        }
+    });
+    
+    // Atualiza a navegação ativa do bottom nav (mobile)
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('text-primary', 'dark:text-accent');
+        item.classList.add('text-gray-500', 'dark:text-gray-400');
+    });
+    
+    // Destaca o item ativo na bottom navigation
+    const activeButton = document.querySelector(`[onclick="navigateTo('${sectionId}')"]`);
+    if (activeButton && activeButton.classList.contains('nav-item')) {
+        activeButton.classList.remove('text-gray-500', 'dark:text-gray-400');
+        activeButton.classList.add('text-primary', 'dark:text-accent');
+    }
+    
+    // Em dispositivos móveis, fecha o menu após a navegação
+    if (window.innerWidth < 768 && elements.sidebar) {
+        elements.sidebar.classList.add('hidden');
+    }
+}
+
+/**
+ * Alterna entre os temas claro e escuro
+ */
+function toggleTheme() {
+    const isDarkMode = document.documentElement.classList.toggle('dark');
+    appData.settings.darkMode = isDarkMode;
+    saveData();
+    
+    // Atualiza o ícone do botão
+    const themeIcon = elements.themeToggle.querySelector('i');
+    if (themeIcon) {
+        if (isDarkMode) {
+            themeIcon.classList.remove('fa-moon');
+            themeIcon.classList.add('fa-sun');
+        } else {
+            themeIcon.classList.remove('fa-sun');
+            themeIcon.classList.add('fa-moon');
+        }
+    }
+    
+    // Reinicializa os gráficos para aplicar o novo tema
+    setTimeout(() => {
+        initCharts();
+    }, 100);
+}
+
+/**
+ * Abre modal rápido de transação para mobile
+ */
+function openQuickTransactionModal() {
+    // Cria um modal de seleção rápida
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 z-50 flex items-end md:items-center justify-center';
+    modal.innerHTML = `
+        <div class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" onclick="this.parentNode.remove()"></div>
+        <div class="bg-white dark:bg-gray-800 rounded-t-3xl md:rounded-2xl shadow-lg w-full max-w-md transform transition-transform">
+            <div class="p-6">
+                <h3 class="text-xl font-bold mb-6 text-center">Adicionar Transação</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="openModal('transaction', null, 'income'); this.closest('.fixed').remove();" class="bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-2xl p-6 transition-all duration-200 hover:scale-105 shadow-lg">
+                        <i class="fas fa-arrow-down text-3xl mb-3 block"></i>
+                        <span class="font-medium text-lg">Receita</span>
+                    </button>
+                    <button onclick="openModal('transaction', null, 'expense'); this.closest('.fixed').remove();" class="bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-2xl p-6 transition-all duration-200 hover:scale-105 shadow-lg">
+                        <i class="fas fa-arrow-up text-3xl mb-3 block"></i>
+                        <span class="font-medium text-lg">Despesa</span>
+                    </button>
+                </div>
+                <button onclick="this.closest('.fixed').remove();" class="w-full mt-6 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-medium">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+/**
+ * Abre um modal específico
+ * @param {string} modalType - Tipo de modal ('transaction', 'goal', 'investment', 'contribute')
+ * @param {string} [itemId] - ID opcional do item a ser editado
+ * @param {string} [defaultType] - Tipo padrão para transação ('income' ou 'expense')
+ */
+function openModal(modalType, itemId = null, defaultType = null) {
+    const modal = document.getElementById(`${modalType}-modal`);
+    if (!modal) return;
+    
+    // Limpa o formulário
+    const form = document.getElementById(`${modalType}-form`);
+    if (form) form.reset();
+    
+    // Define a data atual nos campos de data
+    const dateInput = document.getElementById(`${modalType}-date`);
+    if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+    
+    // Se for edição, preenche o formulário com os dados existentes
+    if (itemId) {
+        fillFormWithData(modalType, itemId);
+    } else {
+        // Se for um novo item, limpa o campo de ID
+        const idInput = document.getElementById(`${modalType}-id`);
+        if (idInput) idInput.value = '';
+        
+        // Define o título do modal
+        const titleElement = document.getElementById(`${modalType}-modal-title`);
+        if (titleElement) {
+            titleElement.textContent = modalType === 'transaction' ? 'Nova transação' :
+                                      modalType === 'goal' ? 'Nova meta' :
+                                      'Novo investimento';
+        }
+        
+        // Se for transação e tiver tipo padrão, define o tipo
+        if (modalType === 'transaction' && defaultType) {
+            const typeRadio = document.querySelector(`input[name="transaction-type"][value="${defaultType}"]`);
+            if (typeRadio) {
+                typeRadio.checked = true;
+                populateCategorySelects();
+            }
+        }
+    }
+    
+    // Caso especial para o modal de contribuição
+    if (modalType === 'contribute' && itemId) {
+        const goal = appData.goals.find(g => g.id === itemId);
+        if (goal) {
+            document.getElementById('contribute-goal-id').value = goal.id;
+            document.getElementById('contribute-goal-name').textContent = goal.name;
+            document.getElementById('contribute-goal-progress').textContent = 
+                `${formatCurrency(goal.current)} de ${formatCurrency(goal.target)} (${Math.round(goal.current / goal.target * 100)}%)`;
+        }
+    }
+    
+    // Exibe o modal com animação
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        const modalContent = modal.querySelector('.modal');
+        if (modalContent) {
+            modalContent.classList.remove('modal-enter');
+            modalContent.classList.add('modal-show');
+        }
+    }, 10);
+}
+
+/**
+ * Fecha um modal específico
+ * @param {string} modalId - ID do modal a ser fechado
+ */
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    
+    // Anima a saída do modal
+    const modalContent = modal.querySelector('.modal');
+    if (modalContent) {
+        modalContent.classList.remove('modal-show');
+        modalContent.classList.add('modal-leave');
+    }
+    
+    // Oculta o modal após a animação
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        if (modalContent) {
+            modalContent.classList.remove('modal-leave');
+            modalContent.classList.add('modal-enter');
+        }
+    }, 300);
+}
+
+/**
+ * Preenche um formulário com dados existentes para edição
+ * @param {string} formType - Tipo de formulário ('transaction', 'goal', 'investment')
+ * @param {string} itemId - ID do item a ser editado
+ */
+function fillFormWithData(formType, itemId) {
+    let item;
+    
+    // Encontra o item pelo ID
+    switch (formType) {
+        case 'transaction':
+            item = appData.transactions.find(t => t.id === itemId);
+            break;
+        case 'goal':
+            item = appData.goals.find(g => g.id === itemId);
+            break;
+        case 'investment':
+            item = appData.investments.find(i => i.id === itemId);
+            break;
+        default:
+            return;
+    }
+    
+    if (!item) return;
+    
+    // Define o ID no campo oculto
+    const idInput = document.getElementById(`${formType}-id`);
+    if (idInput) idInput.value = item.id;
+    
+    // Define o título do modal
+    const titleElement = document.getElementById(`${formType}-modal-title`);
+    if (titleElement) {
+        titleElement.textContent = formType === 'transaction' ? 'Editar transação' :
+                                  formType === 'goal' ? 'Editar meta' :
+                                  'Editar investimento';
+    }
+    
+    // Preenche os campos específicos de cada tipo de formulário
+    switch (formType) {
+        case 'transaction':
+            // Define o tipo de transação (receita/despesa)
+            const typeRadios = document.querySelectorAll('input[name="transaction-type"]');
+            typeRadios.forEach(radio => {
+                radio.checked = radio.value === item.type;
+            });
+            
+            document.getElementById('transaction-description').value = item.description;
+            document.getElementById('transaction-amount').value = formatCurrency(item.amount, false);
+            document.getElementById('transaction-category').value = item.category;
+            document.getElementById('transaction-date').value = item.date;
+            document.getElementById('transaction-recurring').checked = item.recurring;
+            
+            // Atualiza as categorias baseado no tipo
+            populateCategorySelects();
+            break;
+            
+        case 'goal':
+            document.getElementById('goal-name').value = item.name;
+            document.getElementById('goal-target').value = formatCurrency(item.target, false);
+            document.getElementById('goal-current').value = formatCurrency(item.current, false);
+            document.getElementById('goal-date').value = item.date;
+            document.getElementById('goal-icon').value = item.icon;
+            break;
+            
+        case 'investment':
+            document.getElementById('investment-name').value = item.name;
+            document.getElementById('investment-type').value = item.type;
+            document.getElementById('investment-amount').value = formatCurrency(item.amount, false);
+            document.getElementById('investment-current').value = formatCurrency(item.current, false);
+            document.getElementById('investment-date').value = item.date;
+            document.getElementById('investment-risk').value = item.risk;
+            break;
+    }
+}
+
+/**
+ * Manipula o envio do formulário de transação
+ * @param {Event} e - Evento de envio do formulário
+ */
+function handleTransactionSubmit(e) {
+    e.preventDefault();
+    
+    // Obtém os valores do formulário
+    const id = document.getElementById('transaction-id').value || `tx${Date.now()}`;
+    const type = document.querySelector('input[name="transaction-type"]:checked').value;
+    const description = document.getElementById('transaction-description').value;
+    const amountStr = document.getElementById('transaction-amount').value;
+    const amount = parseCurrency(amountStr);
+    const category = document.getElementById('transaction-category').value;
+    const date = document.getElementById('transaction-date').value;
+    const recurring = document.getElementById('transaction-recurring').checked;
+    
+    // Validação básica
+    if (!description || !amount || !category || !date) {
+        showNotification('Por favor, preencha todos os campos obrigatórios.', 'error');
+        return;
+    }
+    
+    // Cria ou atualiza a transação
+    const transaction = {
+        id,
+        type,
+        description,
+        amount,
+        category,
+        date,
+        recurring
+    };
+    
+    // Verifica se é uma nova transação ou uma edição
+    const existingIndex = appData.transactions.findIndex(t => t.id === id);
+    if (existingIndex >= 0) {
+        appData.transactions[existingIndex] = transaction;
+        showNotification('Transação atualizada com sucesso!', 'success');
+    } else {
+        appData.transactions.push(transaction);
+        showNotification('Transação adicionada com sucesso!', 'success');
+    }
+    
+    // Salva os dados e atualiza a interface
+    saveData();
+    renderDashboard();
+    renderTransactions();
+    calculateRiskIndex();
+    
+    // Fecha o modal
+    closeModal('transaction-modal');
+}
+
+/**
+ * Manipula o envio do formulário de meta
+ * @param {Event} e - Evento de envio do formulário
+ */
+function handleGoalSubmit(e) {
+    e.preventDefault();
+    
+    // Obtém os valores do formulário
+    const id = document.getElementById('goal-id').value || `goal${Date.now()}`;
+    const name = document.getElementById('goal-name').value;
+    const targetStr = document.getElementById('goal-target').value;
+    const target = parseCurrency(targetStr);
+    const currentStr = document.getElementById('goal-current').value;
+    const current = parseCurrency(currentStr);
+    const date = document.getElementById('goal-date').value;
+    const icon = document.getElementById('goal-icon').value;
+    
+    // Validação básica
+    if (!name || !target || !date) {
+        showNotification('Por favor, preencha todos os campos obrigatórios.', 'error');
+        return;
+    }
+    
+    if (current > target) {
+        showNotification('O valor atual não pode ser maior que o valor alvo.', 'error');
+        return;
+    }
+    
+    // Cria ou atualiza a meta
+    const goal = {
+        id,
+        name,
+        target,
+        current,
+        date,
+        icon
+    };
+    
+    // Verifica se é uma nova meta ou uma edição
+    const existingIndex = appData.goals.findIndex(g => g.id === id);
+    if (existingIndex >= 0) {
+        appData.goals[existingIndex] = goal;
+        showNotification('Meta atualizada com sucesso!', 'success');
+    } else {
+        appData.goals.push(goal);
+        showNotification('Meta adicionada com sucesso!', 'success');
+    }
+    
+    // Salva os dados e atualiza a interface
+    saveData();
+    renderGoals();
+    calculateRiskIndex();
+    
+    // Fecha o modal
+    closeModal('goal-modal');
+}
+
+/**
+ * Manipula o envio do formulário de investimento
+ * @param {Event} e - Evento de envio do formulário
+ */
+function handleInvestmentSubmit(e) {
+    e.preventDefault();
+    
+    // Obtém os valores do formulário
+    const id = document.getElementById('investment-id').value || `inv${Date.now()}`;
+    const name = document.getElementById('investment-name').value;
+    const type = document.getElementById('investment-type').value;
+    const amountStr = document.getElementById('investment-amount').value;
+    const amount = parseCurrency(amountStr);
+    const currentStr = document.getElementById('investment-current').value;
+    const current = parseCurrency(currentStr);
+    const date = document.getElementById('investment-date').value;
+    const risk = document.getElementById('investment-risk').value;
+    
+    // Validação básica
+    if (!name || !amount || !current || !date || !type) {
+        showNotification('Por favor, preencha todos os campos obrigatórios.', 'error');
+        return;
+    }
+    
+    // Cria ou atualiza o investimento
+    const investment = {
+        id,
+        name,
+        type,
+        amount,
+        current,
+        date,
+        risk
+    };
+    
+    // Verifica se é um novo investimento ou uma edição
+    const existingIndex = appData.investments.findIndex(i => i.id === id);
+    if (existingIndex >= 0) {
+        appData.investments[existingIndex] = investment;
+        showNotification('Investimento atualizado com sucesso!', 'success');
+    } else {
+        appData.investments.push(investment);
+        showNotification('Investimento adicionado com sucesso!', 'success');
+    }
+    
+    // Salva os dados e atualiza a interface
+    saveData();
+    renderInvestments();
+    calculateRiskIndex();
+    
+    // Fecha o modal
+    closeModal('investment-modal');
+}
+
+/**
+ * Manipula o envio do formulário de contribuição para meta
+ * @param {Event} e - Evento de envio do formulário
+ */
+function handleContributeSubmit(e) {
+    e.preventDefault();
+    
+    // Obtém os valores do formulário
+    const goalId = document.getElementById('contribute-goal-id').value;
+    const amountStr = document.getElementById('contribute-amount').value;
+    const amount = parseCurrency(amountStr);
+    
+    // Validação básica
+    if (!goalId || !amount) {
+        showNotification('Por favor, informe o valor da contribuição.', 'error');
+        return;
+    }
+    
+    // Encontra a meta
+    const goalIndex = appData.goals.findIndex(g => g.id === goalId);
+    if (goalIndex < 0) {
+        showNotification('Meta não encontrada.', 'error');
+        return;
+    }
+    
+    // Atualiza o valor atual da meta
+    appData.goals[goalIndex].current += amount;
+    
+    // Verifica se a meta foi atingida
+    const goal = appData.goals[goalIndex];
+    const wasAchieved = goal.current >= goal.target;
+    
+    // Salva os dados e atualiza a interface
+    saveData();
+    renderGoals();
+    
+    // Fecha o modal
+    closeModal('contribute-modal');
+    
+    // Mostra notificação de sucesso
+    showNotification(`Contribuição de ${formatCurrency(amount)} adicionada com sucesso!`, 'success');
+    
+    // Se a meta foi atingida, mostra confete e uma notificação especial
+    if (wasAchieved) {
+        showConfetti();
+        setTimeout(() => {
+            showNotification(`Parabéns! Você atingiu sua meta: ${goal.name}`, 'success', 5000);
+        }, 500);
+    }
+}
+
+/**
+ * Renderiza o dashboard com os dados atuais
+ */
+function renderDashboard() {
+    // Calcula saldos
+    const { totalBalance, totalIncome, totalExpense } = calculateBalances();
+    
+    // Atualiza os valores no dashboard
+    if (elements.totalBalance) elements.totalBalance.textContent = formatCurrency(totalBalance);
+    if (elements.incomeAmount) elements.incomeAmount.textContent = formatCurrency(totalIncome);
+    if (elements.expenseAmount) elements.expenseAmount.textContent = formatCurrency(totalExpense);
+    
+    // Renderiza transações recentes
+    renderRecentTransactions();
+    
+    // Renderiza lista de categorias
+    renderCategoriesList();
+    
+    // Remove os skeletons e mostra os gráficos
+    document.querySelectorAll('.skeleton').forEach(skeleton => {
+        skeleton.classList.add('fade-out');
+        setTimeout(() => {
+            skeleton.classList.add('hidden');
+            const chartId = skeleton.parentElement.id.replace('-container', '');
+            const chart = document.getElementById(chartId);
+            if (chart) chart.classList.remove('hidden');
+        }, 500);
+    });
+}
+
+/**
+ * Renderiza a lista de transações recentes no dashboard
+ */
+function renderRecentTransactions() {
+    if (!elements.recentTransactions) return;
+    
+    // Obtém as 5 transações mais recentes
+    const recentTransactions = [...appData.transactions]
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 5);
+    
+    // Limpa o contêiner
+    elements.recentTransactions.innerHTML = '';
+    
+    // Se não houver transações, mostra uma mensagem
+    if (recentTransactions.length === 0) {
+        elements.recentTransactions.innerHTML = `
+            <tr>
+                <td colspan="4" class="py-4 text-center text-gray-500 dark:text-gray-400">
+                    Nenhuma transação encontrada
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // Renderiza cada transação
+    recentTransactions.forEach(transaction => {
+        const row = document.createElement('tr');
+        row.className = 'border-b border-gray-100 dark:border-gray-700 last:border-0';
+        
+        // Encontra a categoria
+        const categories = transaction.type === 'income' ? CATEGORIES_INCOME : CATEGORIES_EXPENSE;
+        const category = categories.find(c => c.id === transaction.category) || { name: 'Outro', icon: 'fa-question-circle' };
+        
+        // Formata a data
+        const date = new Date(transaction.date);
+        const formattedDate = date.toLocaleDateString('pt-BR');
+        
+        // Define o conteúdo da linha
+        row.innerHTML = `
+            <td class="py-3">
+                <div class="font-medium">${transaction.description}</div>
+            </td>
+            <td class="py-3">
+                <div class="flex items-center">
+                    <span class="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mr-2">
+                        <i class="fas ${category.icon} text-xs"></i>
+                    </span>
+                    ${category.name}
+                </div>
+            </td>
+            <td class="py-3">${formattedDate}</td>
+            <td class="py-3 text-right ${transaction.type === 'income' ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'} font-medium">
+                ${transaction.type === 'income' ? '+' : '-'} ${formatCurrency(transaction.amount)}
+            </td>
+        `;
+        
+        elements.recentTransactions.appendChild(row);
+    });
+}
+
+/**
+ * Renderiza a lista de categorias de despesas no dashboard
+ */
+function renderCategoriesList() {
+    if (!elements.categoriesList) return;
+    
+    // Calcula o total de despesas por categoria
+    const categoryTotals = {};
+    let totalExpenses = 0;
+    
+    // Filtra apenas as despesas do mês atual
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    
+    const expenses = appData.transactions.filter(t => {
+        const transactionDate = new Date(t.date);
+        return t.type === 'expense' && 
+               transactionDate.getMonth() === currentMonth && 
+               transactionDate.getFullYear() === currentYear;
+    });
+    
+    // Calcula o total por categoria
+    expenses.forEach(expense => {
+        if (!categoryTotals[expense.category]) {
+            categoryTotals[expense.category] = 0;
+        }
+        categoryTotals[expense.category] += expense.amount;
+        totalExpenses += expense.amount;
+    });
+    
+    // Converte para array e ordena por valor
+    const categoriesArray = Object.entries(categoryTotals)
+        .map(([id, amount]) => {
+            const category = CATEGORIES_EXPENSE.find(c => c.id === id) || { name: 'Outro', icon: 'fa-question-circle' };
+            return {
+                id,
+                name: category.name,
+                icon: category.icon,
+                amount,
+                percentage: totalExpenses > 0 ? (amount / totalExpenses * 100) : 0
+            };
+        })
+        .sort((a, b) => b.amount - a.amount);
+    
+    // Limpa o contêiner
+    elements.categoriesList.innerHTML = '';
+    
+    // Se não houver despesas, mostra uma mensagem
+    if (categoriesArray.length === 0) {
+        elements.categoriesList.innerHTML = `
+            <div class="text-center text-gray-500 dark:text-gray-400">
+                Nenhuma despesa no mês atual
+            </div>
+        `;
+        return;
+    }
+    
+    // Renderiza as top 5 categorias
+    categoriesArray.slice(0, 5).forEach(category => {
+        const item = document.createElement('div');
+        
+        item.innerHTML = `
+            <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center">
+                    <span class="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mr-2">
+                        <i class="fas ${category.icon} text-xs"></i>
+                    </span>
+                    <span>${category.name}</span>
+                </div>
+                <span class="font-medium">${formatCurrency(category.amount)}</span>
+            </div>
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div class="bg-primary dark:bg-accent h-2 rounded-full" style="width: ${category.percentage}%"></div>
+            </div>
+        `;
+        
+        elements.categoriesList.appendChild(item);
+    });
+}
+
+/**
+ * Renderiza a lista completa de transações
+ */
+function renderTransactions() {
+    if (!elements.transactionsTable) return;
+    
+    // Obtém os filtros atuais
+    const searchTerm = elements.transactionSearch ? elements.transactionSearch.value.toLowerCase() : '';
+    const dateFilter = elements.transactionFilterDate ? elements.transactionFilterDate.value : 'all';
+    const categoryFilter = elements.transactionFilterCategory ? elements.transactionFilterCategory.value : 'all';
+    
+    // Filtra as transações
+    let filteredTransactions = [...appData.transactions];
+    
+    // Aplica filtro de pesquisa
+    if (searchTerm) {
+        filteredTransactions = filteredTransactions.filter(t => 
+            t.description.toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    // Aplica filtro de data
+    if (dateFilter !== 'all') {
+        const today = new Date();
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        
+        switch (dateFilter) {
+            case 'current-month':
+                filteredTransactions = filteredTransactions.filter(t => {
+                    const date = new Date(t.date);
+                    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+                });
+                break;
+            case 'last-month':
+                const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+                const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+                filteredTransactions = filteredTransactions.filter(t => {
+                    const date = new Date(t.date);
+                    return date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
+                });
+                break;
+            case 'last-3-months':
+                const threeMonthsAgo = new Date(today);
+                threeMonthsAgo.setMonth(today.getMonth() - 3);
+                filteredTransactions = filteredTransactions.filter(t => {
+                    const date = new Date(t.date);
+                    return date >= threeMonthsAgo;
+                });
+                break;
+        }
+    }
+    
+    // Aplica filtro de categoria
+    if (categoryFilter !== 'all') {
+        filteredTransactions = filteredTransactions.filter(t => t.category === categoryFilter);
+    }
+    
+    // Ordena por data (mais recente primeiro)
+    filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    // Atualiza o contador de transações
+    if (elements.transactionsCount) {
+        elements.transactionsCount.textContent = filteredTransactions.length;
+    }
+    
+    // Limpa a tabela
+    elements.transactionsTable.innerHTML = '';
+    
+    // Se não houver transações, mostra uma mensagem
+    if (filteredTransactions.length === 0) {
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `
+            <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                Nenhuma transação encontrada
+            </td>
+        `;
+        elements.transactionsTable.appendChild(emptyRow);
+        return;
+    }
+    
+    // Renderiza cada transação
+    filteredTransactions.forEach(transaction => {
+        const row = document.createElement('tr');
+        row.className = 'border-b border-gray-200 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-750';
+        
+        // Encontra a categoria
+        const categories = transaction.type === 'income' ? CATEGORIES_INCOME : CATEGORIES_EXPENSE;
+        const category = categories.find(c => c.id === transaction.category) || { name: 'Outro', icon: 'fa-question-circle' };
+        
+        // Formata a data
+        const date = new Date(transaction.date);
+        const formattedDate = date.toLocaleDateString('pt-BR');
+        
+        // Define o conteúdo da linha
+        row.innerHTML = `
+            <td class="px-6 py-4">
+                <div class="font-medium">${transaction.description}</div>
+                ${transaction.recurring ? '<span class="text-xs text-gray-500 dark:text-gray-400">Recorrente</span>' : ''}
+            </td>
+            <td class="px-6 py-4">
+                <div class="flex items-center">
+                    <span class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mr-2">
+                        <i class="fas ${category.icon}"></i>
+                    </span>
+                    ${category.name}
+                </div>
+            </td>
+            <td class="px-6 py-4">${formattedDate}</td>
+            <td class="px-6 py-4 text-right ${transaction.type === 'income' ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'} font-medium">
+                ${transaction.type === 'income' ? '+' : '-'} ${formatCurrency(transaction.amount)}
+            </td>
+            <td class="px-6 py-4 text-right">
+                <button class="text-gray-500 hover:text-primary dark:hover:text-accent mr-2" onclick="editTransaction('${transaction.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="text-gray-500 hover:text-red-500" onclick="deleteTransaction('${transaction.id}')">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </td>
+        `;
+        
+        elements.transactionsTable.appendChild(row);
+    });
+}
+
+/**
+ * Filtra as transações com base nos critérios atuais
+ */
+function filterTransactions() {
+    renderTransactions();
+}
+
+/**
+ * Edita uma transação existente
+ * @param {string} transactionId - ID da transação a ser editada
+ */
+function editTransaction(transactionId) {
+    openModal('transaction', transactionId);
+}
+
+/**
+ * Exclui uma transação
+ * @param {string} transactionId - ID da transação a ser excluída
+ */
+function deleteTransaction(transactionId) {
+    if (confirm('Tem certeza que deseja excluir esta transação?')) {
+        // Remove a transação do array
+        appData.transactions = appData.transactions.filter(t => t.id !== transactionId);
+        
+        // Salva os dados e atualiza a interface
+        saveData();
+        renderDashboard();
+        renderTransactions();
+        calculateRiskIndex();
+        
+        // Mostra notificação
+        showNotification('Transação excluída com sucesso!', 'success');
+    }
+}
+
+/**
+ * Renderiza as metas financeiras
+ */
+function renderGoals() {
+    if (!elements.goalsContainer) return;
+    
+    // Limpa o contêiner
+    elements.goalsContainer.innerHTML = '';
+    
+    // Se não houver metas, mostra uma mensagem
+    if (appData.goals.length === 0) {
+        const emptyMessage = document.createElement('div');
+        emptyMessage.className = 'col-span-full text-center py-8 text-gray-500 dark:text-gray-400';
+        emptyMessage.innerHTML = `
+            <i class="fas fa-bullseye text-4xl mb-2 opacity-50"></i>
+            <p>Você ainda não tem metas financeiras.</p>
+            <p class="mt-2">Clique em "Nova meta" para começar!</p>
+        `;
+        elements.goalsContainer.appendChild(emptyMessage);
+        return;
+    }
+    
+    // Ordena as metas por progresso (menos completas primeiro)
+    const sortedGoals = [...appData.goals].sort((a, b) => {
+        const progressA = a.current / a.target;
+        const progressB = b.current / b.target;
+        return progressA - progressB;
+    });
+    
+    // Renderiza cada meta
+    sortedGoals.forEach(goal => {
+        const progress = goal.current / goal.target * 100;
+        const isCompleted = progress >= 100;
+        
+        // Calcula dias restantes
+        const today = new Date();
+        const targetDate = new Date(goal.date);
+        const daysLeft = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
+        
+        // Cria o elemento da meta
+        const goalElement = document.createElement('div');
+        goalElement.className = 'bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6';
+        
+        goalElement.innerHTML = `
+            <div class="flex justify-between items-start mb-4">
+                <h3 class="font-medium">${goal.name}</h3>
+                <span class="rounded-full bg-gray-100 dark:bg-gray-700 p-2">
+                    <i class="fas ${goal.icon}"></i>
+                </span>
+            </div>
+            
+            <div class="mb-4">
+                <div class="flex justify-between text-sm mb-1">
+                    <span>${formatCurrency(goal.current)} de ${formatCurrency(goal.target)}</span>
+                    <span>${Math.min(100, Math.round(progress))}%</span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                    <div class="${isCompleted ? 'bg-green-500 dark:bg-green-400' : 'bg-primary dark:bg-accent'} h-2.5 rounded-full" 
+                         style="width: ${Math.min(100, progress)}%"></div>
+                </div>
+            </div>
+            
+            <div class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                ${daysLeft > 0 ? `${daysLeft} dias restantes` : isCompleted ? 'Meta concluída!' : 'Prazo expirado'}
+            </div>
+            
+            <div class="flex space-x-2">
+                <button class="flex-1 py-2 px-3 ${isCompleted ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-primary hover:bg-primary-light text-white'} rounded-xl transition-colors" 
+                        ${isCompleted ? 'disabled' : `onclick="openModal('contribute', '${goal.id}')"`}>
+                    <i class="fas fa-plus mr-1"></i> Contribuir
+                </button>
+                <button class="py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick="editGoal('${goal.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onclick="deleteGoal('${goal.id}')">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+        `;
+        
+        elements.goalsContainer.appendChild(goalElement);
+    });
+}
+
+/**
+ * Edita uma meta existente
+ * @param {string} goalId - ID da meta a ser editada
+ */
+function editGoal(goalId) {
+    openModal('goal', goalId);
+}
+
+/**
+ * Exclui uma meta
+ * @param {string} goalId - ID da meta a ser excluída
+ */
+function deleteGoal(goalId) {
+    if (confirm('Tem certeza que deseja excluir esta meta?')) {
+        // Remove a meta do array
+        appData.goals = appData.goals.filter(g => g.id !== goalId);
+        
+        // Salva os dados e atualiza a interface
+        saveData();
+        renderGoals();
+        calculateRiskIndex();
+        
+        // Mostra notificação
+        showNotification('Meta excluída com sucesso!', 'success');
+    }
+}
+
+/**
+ * Renderiza os investimentos
+ */
+function renderInvestments() {
+    if (!elements.investmentsTable) return;
+    
+    // Limpa a tabela
+    elements.investmentsTable.innerHTML = '';
+    
+    // Se não houver investimentos, mostra uma mensagem
+    if (appData.investments.length === 0) {
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `
+            <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                Nenhum investimento encontrado
+            </td>
+        `;
+        elements.investmentsTable.appendChild(emptyRow);
+        return;
+    }
+    
+    // Ordena os investimentos por rendimento (maior primeiro)
+    const sortedInvestments = [...appData.investments].sort((a, b) => {
+        const returnA = a.current - a.amount;
+        const returnB = b.current - b.amount;
+        return returnB - returnA;
+    });
+    
+    // Renderiza cada investimento
+    sortedInvestments.forEach(investment => {
+        const row = document.createElement('tr');
+        row.className = 'border-b border-gray-200 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-750';
+        
+        // Calcula o rendimento
+        const returnValue = investment.current - investment.amount;
+        const returnPercentage = (returnValue / investment.amount) * 100;
+        const isPositiveReturn = returnValue >= 0;
+        
+        // Define o tipo de investimento
+        let investmentType = 'Outro';
+        switch (investment.type) {
+            case 'poupanca': investmentType = 'Poupança'; break;
+            case 'cdb': investmentType = 'CDB'; break;
+            case 'lci': investmentType = 'LCI/LCA'; break;
+            case 'fundos': investmentType = 'Fundos de Investimento'; break;
+            case 'acoes': investmentType = 'Ações'; break;
+            case 'fii': investmentType = 'Fundos Imobiliários'; break;
+            case 'cripto': investmentType = 'Criptomoedas'; break;
+        }
+        
+        // Define o conteúdo da linha
+        row.innerHTML = `
+            <td class="px-6 py-4">
+                <div class="font-medium">${investment.name}</div>
+            </td>
+            <td class="px-6 py-4">${investmentType}</td>
+            <td class="px-6 py-4 text-right">${formatCurrency(investment.amount)}</td>
+            <td class="px-6 py-4 text-right">${formatCurrency(investment.current)}</td>
+            <td class="px-6 py-4 text-right ${isPositiveReturn ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}">
+                ${isPositiveReturn ? '+' : ''} ${formatCurrency(returnValue)} (${returnPercentage.toFixed(2)}%)
+            </td>
+            <td class="px-6 py-4 text-right">
+                <button class="text-gray-500 hover:text-primary dark:hover:text-accent mr-2" onclick="editInvestment('${investment.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="text-gray-500 hover:text-red-500" onclick="deleteInvestment('${investment.id}')">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </td>
+        `;
+        
+        elements.investmentsTable.appendChild(row);
+    });
+}
+
+/**
+ * Edita um investimento existente
+ * @param {string} investmentId - ID do investimento a ser editado
+ */
+function editInvestment(investmentId) {
+    openModal('investment', investmentId);
+}
+
+/**
+ * Exclui um investimento
+ * @param {string} investmentId - ID do investimento a ser excluído
+ */
+function deleteInvestment(investmentId) {
+    if (confirm('Tem certeza que deseja excluir este investimento?')) {
+        // Remove o investimento do array
+        appData.investments = appData.investments.filter(i => i.id !== investmentId);
+        
+        // Salva os dados e atualiza a interface
+        saveData();
+        renderInvestments();
+        calculateRiskIndex();
+        
+        // Mostra notificação
+        showNotification('Investimento excluído com sucesso!', 'success');
+    }
+}
+
+/**
+ * Inicializa os gráficos da aplicação
+ */
+function initCharts() {
+    // Configurações comuns para os gráficos
+    const isDarkMode = document.documentElement.classList.contains('dark');
+    const textColor = isDarkMode ? '#9ca3af' : '#4b5563';
+    const gridColor = isDarkMode ? 'rgba(75, 85, 99, 0.2)' : 'rgba(229, 231, 235, 0.8)';
+    
+    // Gráfico de fluxo mensal
+    initMonthlyChart(textColor, gridColor);
+    
+    // Gráfico de categorias
+    initCategoriesChart(textColor);
+    
+    // Gráfico de investimentos
+    initInvestmentsChart(textColor, gridColor);
+    
+    // Gráfico de distribuição de investimentos
+    initInvestmentDistributionChart(textColor);
+    
+    // Gráfico de risco
+    initRiskGauge(textColor);
+}
+
+/**
+ * Inicializa o gráfico de fluxo mensal
+ * @param {string} textColor - Cor do texto
+ * @param {string} gridColor - Cor da grade
+ */
+function initMonthlyChart(textColor, gridColor) {
+    const ctx = document.getElementById('monthly-chart');
+    if (!ctx) return;
+    
+    // Destrói o gráfico existente, se houver
+    if (window.monthlyChart) {
+        window.monthlyChart.destroy();
+    }
+    
+    // Obtém os dados dos últimos 6 meses
+    const { labels, incomeData, expenseData } = getMonthlyData(6);
+    
+    // Cria o gráfico
+    window.monthlyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Receitas',
+                    data: incomeData,
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                    borderColor: 'rgb(59, 130, 246)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Despesas',
+                    data: expenseData,
+                    backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                    borderColor: 'rgb(239, 68, 68)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: textColor
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor
+                    }
+                },
+                y: {
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor,
+                        callback: function(value) {
+                            return formatCurrency(value, true, false);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Inicializa o gráfico de categorias
+ * @param {string} textColor - Cor do texto
+ */
+function initCategoriesChart(textColor) {
+    const ctx = document.getElementById('categories-chart');
+    if (!ctx) return;
+    
+    // Destrói o gráfico existente, se houver
+    if (window.categoriesChart) {
+        window.categoriesChart.destroy();
+    }
+    
+    // Calcula o total de despesas por categoria no mês atual
+    const categoryData = getCategoryData();
+    
+    // Cria o gráfico
+    window.categoriesChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: categoryData.labels,
+            datasets: [{
+                data: categoryData.values,
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.7)',
+                    'rgba(16, 185, 129, 0.7)',
+                    'rgba(245, 158, 11, 0.7)',
+                    'rgba(239, 68, 68, 0.7)',
+                    'rgba(139, 92, 246, 0.7)',
+                    'rgba(236, 72, 153, 0.7)',
+                    'rgba(75, 85, 99, 0.7)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        color: textColor
+                    }
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Inicializa o gráfico de investimentos
+ * @param {string} textColor - Cor do texto
+ * @param {string} gridColor - Cor da grade
+ */
+function initInvestmentsChart(textColor, gridColor) {
+    const ctx = document.getElementById('investments-chart');
+    if (!ctx) return;
+    
+    // Destrói o gráfico existente, se houver
+    if (window.investmentsChart) {
+        window.investmentsChart.destroy();
+    }
+    
+    // Obtém os dados dos investimentos
+    const { labels, initialValues, currentValues } = getInvestmentsData();
+    
+    // Cria o gráfico
+    window.investmentsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Valor investido',
+                    data: initialValues,
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    borderColor: 'rgb(59, 130, 246)',
+                    borderWidth: 2,
+                    pointBackgroundColor: 'rgb(59, 130, 246)',
+                    tension: 0.1
+                },
+                {
+                    label: 'Valor atual',
+                    data: currentValues,
+                    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                    borderColor: 'rgb(16, 185, 129)',
+                    borderWidth: 2,
+                    pointBackgroundColor: 'rgb(16, 185, 129)',
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: textColor
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor
+                    }
+                },
+                y: {
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor,
+                        callback: function(value) {
+                            return formatCurrency(value, true, false);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Inicializa o gráfico de distribuição de investimentos
+ * @param {string} textColor - Cor do texto
+ */
+function initInvestmentDistributionChart(textColor) {
+    const ctx = document.getElementById('investment-distribution');
+    if (!ctx) return;
+    
+    // Destrói o gráfico existente, se houver
+    if (window.investmentDistributionChart) {
+        window.investmentDistributionChart.destroy();
+    }
+    
+    // Obtém os dados de distribuição dos investimentos
+    const { labels, values } = getInvestmentDistributionData();
+    
+    // Cria o gráfico
+    window.investmentDistributionChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.7)',
+                    'rgba(16, 185, 129, 0.7)',
+                    'rgba(245, 158, 11, 0.7)',
+                    'rgba(239, 68, 68, 0.7)',
+                    'rgba(139, 92, 246, 0.7)',
+                    'rgba(236, 72, 153, 0.7)',
+                    'rgba(75, 85, 99, 0.7)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        color: textColor
+                    }
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Inicializa o gráfico de medidor de risco
+ * @param {string} textColor - Cor do texto
+ */
+function initRiskGauge(textColor) {
+    const ctx = document.getElementById('risk-gauge');
+    if (!ctx) return;
+    
+    // Destrói o gráfico existente, se houver
+    if (window.riskGaugeChart) {
+        window.riskGaugeChart.destroy();
+    }
+    
+    // Calcula o índice de risco
+    const riskIndex = calculateRiskIndex();
+    
+    // Cria o gráfico
+    window.riskGaugeChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Risco', 'Restante'],
+            datasets: [{
+                data: [riskIndex, 100 - riskIndex],
+                backgroundColor: [
+                    getRiskColor(riskIndex),
+                    'rgba(229, 231, 235, 0.5)'
+                ],
+                borderWidth: 0,
+                circumference: 180,
+                rotation: 270
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    enabled: false
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Obtém dados para o gráfico mensal
+ * @param {number} months - Número de meses a serem exibidos
+ * @returns {Object} Objeto com labels, dados de receitas e despesas
+ */
+function getMonthlyData(months = 6) {
+    const labels = [];
+    const incomeData = [];
+    const expenseData = [];
+    
+    // Obtém o mês atual e os meses anteriores
+    const today = new Date();
+    
+    for (let i = months - 1; i >= 0; i--) {
+        const month = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        const monthName = month.toLocaleDateString('pt-BR', { month: 'short' });
+        const monthYear = month.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+        
+        labels.push(monthYear);
+        
+        // Calcula receitas e despesas para o mês
+        const monthIncome = appData.transactions
+            .filter(t => {
+                const transactionDate = new Date(t.date);
+                return t.type === 'income' && 
+                       transactionDate.getMonth() === month.getMonth() && 
+                       transactionDate.getFullYear() === month.getFullYear();
+            })
+            .reduce((sum, t) => sum + t.amount, 0);
+        
+        const monthExpense = appData.transactions
+            .filter(t => {
+                const transactionDate = new Date(t.date);
+                return t.type === 'expense' && 
+                       transactionDate.getMonth() === month.getMonth() && 
+                       transactionDate.getFullYear() === month.getFullYear();
+            })
+            .reduce((sum, t) => sum + t.amount, 0);
+        
+        incomeData.push(monthIncome);
+        expenseData.push(monthExpense);
+    }
+    
+    return { labels, incomeData, expenseData };
+}
+
+/**
+ * Obtém dados para o gráfico de categorias
+ * @returns {Object} Objeto com labels e valores
+ */
+function getCategoryData() {
+    const labels = [];
+    const values = [];
+    
+    // Calcula o total de despesas por categoria no mês atual
+    const categoryTotals = {};
+    
+    // Filtra apenas as despesas do mês atual
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    
+    const expenses = appData.transactions.filter(t => {
+        const transactionDate = new Date(t.date);
+        return t.type === 'expense' && 
+               transactionDate.getMonth() === currentMonth && 
+               transactionDate.getFullYear() === currentYear;
+    });
+    
+    // Calcula o total por categoria
+    expenses.forEach(expense => {
+        if (!categoryTotals[expense.category]) {
+            categoryTotals[expense.category] = 0;
+        }
+        categoryTotals[expense.category] += expense.amount;
+    });
+    
+    // Converte para arrays de labels e valores
+    Object.entries(categoryTotals).forEach(([id, amount]) => {
+        const category = CATEGORIES_EXPENSE.find(c => c.id === id) || { name: 'Outro' };
+        labels.push(category.name);
+        values.push(amount);
+    });
+    
+    return { labels, values };
+}
+
+/**
+ * Obtém dados para o gráfico de investimentos
+ * @returns {Object} Objeto com labels, valores iniciais e valores atuais
+ */
+function getInvestmentsData() {
+    const labels = [];
+    const initialValues = [];
+    const currentValues = [];
+    
+    // Agrupa investimentos por tipo
+    const investmentsByType = {};
+    
+    appData.investments.forEach(investment => {
+        if (!investmentsByType[investment.type]) {
+            investmentsByType[investment.type] = {
+                initial: 0,
+                current: 0
+            };
+        }
+        investmentsByType[investment.type].initial += investment.amount;
+        investmentsByType[investment.type].current += investment.current;
+    });
+    
+    // Converte para arrays
+    Object.entries(investmentsByType).forEach(([type, values]) => {
+        let typeName = 'Outro';
+        switch (type) {
+            case 'poupanca': typeName = 'Poupança'; break;
+            case 'cdb': typeName = 'CDB'; break;
+            case 'lci': typeName = 'LCI/LCA'; break;
+            case 'fundos': typeName = 'Fundos'; break;
+            case 'acoes': typeName = 'Ações'; break;
+            case 'fii': typeName = 'FIIs'; break;
+            case 'cripto': typeName = 'Cripto'; break;
+        }
+        
+        labels.push(typeName);
+        initialValues.push(values.initial);
+        currentValues.push(values.current);
+    });
+    
+    return { labels, initialValues, currentValues };
+}
+
+/**
+ * Obtém dados para o gráfico de distribuição de investimentos
+ * @returns {Object} Objeto com labels e valores
+ */
+function getInvestmentDistributionData() {
+    const labels = [];
+    const values = [];
+    
+    // Calcula o total por tipo de investimento
+    const typeTotals = {};
+    let totalInvestments = 0;
+    
+    appData.investments.forEach(investment => {
+        if (!typeTotals[investment.type]) {
+            typeTotals[investment.type] = 0;
+        }
+        typeTotals[investment.type] += investment.current;
+        totalInvestments += investment.current;
+    });
+    
+    // Converte para arrays de labels e valores
+    Object.entries(typeTotals).forEach(([type, amount]) => {
+        let typeName = 'Outro';
+        switch (type) {
+            case 'poupanca': typeName = 'Poupança'; break;
+            case 'cdb': typeName = 'CDB'; break;
+            case 'lci': typeName = 'LCI/LCA'; break;
+            case 'fundos': typeName = 'Fundos'; break;
+            case 'acoes': typeName = 'Ações'; break;
+            case 'fii': typeName = 'FIIs'; break;
+            case 'cripto': typeName = 'Cripto'; break;
+        }
+        
+        labels.push(typeName);
+        values.push(amount);
+    });
+    
+    return { labels, values };
+}
+
+/**
+ * Calcula o índice de risco financeiro
+ * @returns {number} Índice de risco (0-100)
+ */
+function calculateRiskIndex() {
+    // Fatores de risco e seus pesos
+    const riskFactors = {
+        emergencyFund: { weight: 30 },        // Fundo de emergência
+        expenseToIncomeRatio: { weight: 25 }, // Proporção despesas/receitas
+        investmentDiversity: { weight: 15 },  // Diversificação de investimentos
+        debtRatio: { weight: 20 },            // Proporção de dívidas
+        goalProgress: { weight: 10 }          // Progresso nas metas
+    };
+    
+    // Calcula saldos
+    const { totalBalance, totalIncome, totalExpense } = calculateBalances();
+    
+    // 1. Fundo de emergência (ideal: 6x despesas mensais)
+    const monthlyExpenses = calculateAverageMonthlyExpenses();
+    const emergencyFundTarget = monthlyExpenses * 6;
+    const emergencyFundScore = Math.min(100, (totalBalance / emergencyFundTarget) * 100);
+    riskFactors.emergencyFund.score = emergencyFundScore;
+    riskFactors.emergencyFund.description = `Fundo de emergência: ${formatCurrency(totalBalance)} de ${formatCurrency(emergencyFundTarget)} recomendado`;
+    
+    // 2. Proporção despesas/receitas (ideal: <70%)
+    const expenseRatio = totalIncome > 0 ? (totalExpense / totalIncome) * 100 : 100;
+    const expenseRatioScore = Math.max(0, 100 - expenseRatio);
+    riskFactors.expenseToIncomeRatio.score = expenseRatioScore;
+    riskFactors.expenseToIncomeRatio.description = `Proporção despesas/receitas: ${expenseRatio.toFixed(0)}% (ideal: <70%)`;
+    
+    // 3. Diversificação de investimentos
+    const investmentTypes = new Set(appData.investments.map(i => i.type)).size;
+    const investmentDiversityScore = Math.min(100, (investmentTypes / 5) * 100);
+    riskFactors.investmentDiversity.score = investmentDiversityScore;
+    riskFactors.investmentDiversity.description = `Diversificação: ${investmentTypes} tipos de investimentos (ideal: 5+)`;
+    
+    // 4. Proporção de dívidas (simulado - em uma aplicação real, seria calculado com base em dívidas reais)
+    const debtRatio = 30;
+    const debtRatioScore = Math.max(0, 100 - debtRatio);
+    riskFactors.debtRatio.score = debtRatioScore;
+    riskFactors.debtRatio.description = `Proporção de dívidas: ${debtRatio}% (ideal: <30%)`;
+    
+    // 5. Progresso nas metas
+    let goalProgress = 0;
+    if (appData.goals.length > 0) {
+        const totalProgress = appData.goals.reduce((sum, goal) => {
+            return sum + (goal.current / goal.target);
+        }, 0);
+        goalProgress = (totalProgress / appData.goals.length) * 100;
+    }
+    riskFactors.goalProgress.score = goalProgress;
+    riskFactors.goalProgress.description = `Progresso nas metas: ${goalProgress.toFixed(0)}%`;
+    
+    // Calcula o índice de risco ponderado
+    let weightedRiskScore = 0;
+    let totalWeight = 0;
+    
+    Object.values(riskFactors).forEach(factor => {
+        weightedRiskScore += (factor.score * factor.weight);
+        totalWeight += factor.weight;
+    });
+    
+    const riskIndex = Math.round(weightedRiskScore / totalWeight);
+    
+    // Atualiza a interface com os fatores de risco
+    updateRiskFactors(riskFactors);
+    
+    // Atualiza o medidor de risco
+    if (elements.riskScore) elements.riskScore.textContent = riskIndex;
+    
+    // Define o nível de risco
+    let riskLevel = '';
+    let riskDescription = '';
+    
+    if (riskIndex >= 80) {
+        riskLevel = 'Baixo';
+        riskDescription = 'Sua saúde financeira está excelente! Continue com as boas práticas.';
+    } else if (riskIndex >= 60) {
+        riskLevel = 'Moderado-Baixo';
+        riskDescription = 'Sua situação financeira é boa, mas há espaço para melhorias.';
+    } else if (riskIndex >= 40) {
+        riskLevel = 'Moderado';
+        riskDescription = 'Sua situação financeira requer atenção em algumas áreas.';
+    } else if (riskIndex >= 20) {
+        riskLevel = 'Moderado-Alto';
+        riskDescription = 'Há riscos significativos em sua situação financeira.';
+    } else {
+        riskLevel = 'Alto';
+        riskDescription = 'Sua situação financeira requer atenção imediata!';
+    }
+    
+    if (elements.riskLevel) elements.riskLevel.textContent = riskLevel;
+    if (elements.riskDescription) elements.riskDescription.textContent = riskDescription;
+    
+    return riskIndex;
+}
+
+/**
+ * Atualiza a exibição dos fatores de risco
+ * @param {Object} riskFactors - Objeto com os fatores de risco
+ */
+function updateRiskFactors(riskFactors) {
+    if (!elements.riskFactors) return;
+    
+    // Limpa o contêiner
+    elements.riskFactors.innerHTML = '';
+    
+    // Adiciona cada fator de risco
+    Object.entries(riskFactors).forEach(([key, factor]) => {
+        const item = document.createElement('div');
+        item.className = 'mb-4';
+        
+        item.innerHTML = `
+            <div class="flex items-center justify-between mb-1">
+                <span>${factor.description}</span>
+                <span class="font-medium">${Math.round(factor.score)}%</span>
+            </div>
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div class="${getRiskProgressColor(factor.score)} h-2 rounded-full" style="width: ${factor.score}%"></div>
+            </div>
+        `;
+        
+        elements.riskFactors.appendChild(item);
+    });
+    
+    // Adiciona recomendações
+    updateRiskRecommendations(riskFactors);
+}
+
+/**
+ * Atualiza as recomendações com base nos fatores de risco
+ * @param {Object} riskFactors - Objeto com os fatores de risco
+ */
+function updateRiskRecommendations(riskFactors) {
+    if (!elements.riskRecommendations) return;
+    
+    // Limpa o contêiner
+    elements.riskRecommendations.innerHTML = '';
+    
+    // Identifica os fatores de maior risco
+    const sortedFactors = Object.entries(riskFactors)
+        .map(([key, factor]) => ({ key, ...factor }))
+        .sort((a, b) => a.score - b.score)
+        .slice(0, 2); // Pega os 2 piores fatores
+    
+    // Gera recomendações com base nos fatores de maior risco
+    sortedFactors.forEach(factor => {
+        const recommendation = document.createElement('div');
+        recommendation.className = 'mb-3 p-3 bg-gray-50 dark:bg-gray-750 rounded-xl';
+        
+        let recommendationText = '';
+        
+        switch (factor.key) {
+            case 'emergencyFund':
+                recommendationText = 'Aumente seu fundo de emergência para cobrir pelo menos 6 meses de despesas.';
+                break;
+            case 'expenseToIncomeRatio':
+                recommendationText = 'Reduza suas despesas mensais ou busque aumentar sua renda para melhorar esta proporção.';
+                break;
+            case 'investmentDiversity':
+                recommendationText = 'Diversifique seus investimentos em diferentes classes de ativos para reduzir riscos.';
+                break;
+            case 'debtRatio':
+                recommendationText = 'Priorize o pagamento de dívidas, especialmente aquelas com juros mais altos.';
+                break;
+            case 'goalProgress':
+                recommendationText = 'Faça contribuições regulares para suas metas financeiras para manter-se no caminho certo.';
+                break;
+        }
+        
+        recommendation.innerHTML = `
+            <div class="flex items-start">
+                <span class="w-8 h-8 rounded-full bg-primary-light dark:bg-accent-light flex items-center justify-center mr-3">
+                    <i class="fas fa-lightbulb text-primary dark:text-accent"></i>
+                </span>
+                <div>
+                    <h4 class="font-medium mb-1">Recomendação</h4>
+                    <p class="text-gray-600 dark:text-gray-300">${recommendationText}</p>
+                </div>
+            </div>
+        `;
+        
+        elements.riskRecommendations.appendChild(recommendation);
+    });
+}
+
+/**
+ * Retorna a classe de cor para a barra de progresso com base no score
+ * @param {number} score - Pontuação (0-100)
+ * @returns {string} Classe CSS para a cor
+ */
+function getRiskProgressColor(score) {
+    if (score >= 80) return 'bg-green-500';
+    if (score >= 60) return 'bg-green-400';
+    if (score >= 40) return 'bg-yellow-400';
+    if (score >= 20) return 'bg-orange-400';
+    return 'bg-red-500';
+}
+
+/**
+ * Calcula a média mensal de despesas dos últimos 3 meses
+ * @returns {number} Média mensal de despesas
+ */
+function calculateAverageMonthlyExpenses() {
+    const now = new Date();
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+    
+    const recentExpenses = appData.transactions
+        .filter(t => t.type === 'expense' && new Date(t.date) >= threeMonthsAgo);
+    
+    if (recentExpenses.length === 0) {
+        // Se não houver despesas recentes, usa todas as despesas
+        const allExpenses = appData.transactions.filter(t => t.type === 'expense');
+        const totalExpense = allExpenses.reduce((sum, t) => sum + t.amount, 0);
+        return allExpenses.length > 0 ? totalExpense / 3 : 2000; // Valor padrão se não houver despesas
+    }
+    
+    // Agrupa despesas por mês
+    const expensesByMonth = {};
+    recentExpenses.forEach(t => {
+        const date = new Date(t.date);
+        const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+        
+        if (!expensesByMonth[monthKey]) {
+            expensesByMonth[monthKey] = 0;
+        }
+        expensesByMonth[monthKey] += t.amount;
+    });
+    
+    // Calcula a média
+    const monthlyTotals = Object.values(expensesByMonth);
+    const totalMonths = monthlyTotals.length;
+    const totalExpense = monthlyTotals.reduce((sum, amount) => sum + amount, 0);
+    
+    return totalMonths > 0 ? totalExpense / totalMonths : 2000; // Valor padrão se não houver meses
+}
+
+/**
+ * Calcula os saldos totais
+ * @returns {Object} Objeto com totalBalance, totalIncome e totalExpense
+ */
+function calculateBalances() {
+    let totalIncome = 0;
+    let totalExpense = 0;
+    
+    appData.transactions.forEach(transaction => {
+        if (transaction.type === 'income') {
+            totalIncome += transaction.amount;
+        } else {
+            totalExpense += transaction.amount;
+        }
+    });
+    
+    const totalBalance = totalIncome - totalExpense;
+    
+    return { totalBalance, totalIncome, totalExpense };
+}
+
+/**
+ * Exporta os dados para um arquivo JSON
+ */
+function exportData() {
+    const dataStr = JSON.stringify(appData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `financas_pessoais_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showNotification('Dados exportados com sucesso!', 'success');
+}
+
+/**
+ * Exibe uma notificação na interface
+ * @param {string} message - Mensagem a ser exibida
+ * @param {string} type - Tipo de notificação (success, error, warning, info)
+ */
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg transition-all duration-300 transform translate-y-0 opacity-0 z-50 ${getNotificationClass(type)}`;
+    
+    notification.innerHTML = `
+        <div class="flex items-center">
+            <span class="mr-3">${getNotificationIcon(type)}</span>
+            <p>${message}</p>
+            <button class="ml-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" onclick="this.parentNode.parentNode.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Anima a entrada
+    setTimeout(() => {
+        notification.classList.remove('opacity-0');
+        notification.classList.add('opacity-100');
+    }, 10);
+    
+    // Remove após 5 segundos
+    setTimeout(() => {
+        notification.classList.remove('opacity-100');
+        notification.classList.add('opacity-0');
+        
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 5000);
+}
+
+/**
+ * Retorna a classe CSS para o tipo de notificação
+ * @param {string} type - Tipo de notificação
+ * @returns {string} Classe CSS
+ */
+function getNotificationClass(type) {
+    switch (type) {
+        case 'success': return 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100';
+        case 'error': return 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100';
+        case 'warning': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100';
+        default: return 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100';
+    }
+}
+
+/**
+ * Retorna o ícone para o tipo de notificação
+ * @param {string} type - Tipo de notificação
+ * @returns {string} HTML do ícone
+ */
+function getNotificationIcon(type) {
+    switch (type) {
+        case 'success': return '<i class="fas fa-check-circle text-green-500 dark:text-green-300"></i>';
+        case 'error': return '<i class="fas fa-exclamation-circle text-red-500 dark:text-red-300"></i>';
+        case 'warning': return '<i class="fas fa-exclamation-triangle text-yellow-500 dark:text-yellow-300"></i>';
+        default: return '<i class="fas fa-info-circle text-blue-500 dark:text-blue-300"></i>';
+    }
+}
+
+/**
+ * Celebra o atingimento de uma meta com confete
+ */
+function showConfetti() {
+    if (typeof confetti !== 'undefined') {
+        confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+        });
+    }
+}
+
+// Inicializa a aplicação quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
