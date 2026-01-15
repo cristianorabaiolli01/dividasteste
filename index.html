@@ -660,6 +660,88 @@
     </div>
   </section>
 
+  <!-- Instagram (Galeria) -->
+<section id="instagram" class="py-16 md:py-20">
+  <div class="mx-auto max-w-6xl px-4">
+    <div class="fade-up text-center">
+      <div class="text-xs font-semibold text-brand-200">Instagram</div>
+      <h2 class="mt-3 text-3xl font-extrabold md:text-4xl">Últimos trabalhos e bastidores</h2>
+      <p class="mx-auto mt-4 max-w-3xl text-base text-slate-200">
+        Acompanhe nosso dia a dia e confira instalações reais.
+      </p>
+
+      <div class="mt-8 flex items-center justify-center gap-3">
+        <a
+          class="inline-flex items-center justify-center gap-2 rounded-2xl bg-white/10 px-6 py-3 font-bold ring-1 ring-white/10 hover:bg-white/15"
+          href="https://www.instagram.com/nectelsistemasdeseguranca/"
+          target="_blank"
+          rel="noopener"
+        >
+          Ver no Instagram
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M5 12h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <!-- Card 1 -->
+      <div class="fade-up overflow-hidden rounded-3xl bg-white/5 ring-1 ring-white/10">
+        <div class="p-3">
+          <blockquote
+            class="instagram-media"
+            data-instgrm-permalink="https://www.instagram.com/p/CoGsXPpOGBy/"
+            data-instgrm-version="14"
+            style="margin:0; width:100%; background:transparent; border:0;"
+          ></blockquote>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="fade-up overflow-hidden rounded-3xl bg-white/5 ring-1 ring-white/10">
+        <div class="p-3">
+          <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/p/CaFQjTVlnDw/" data-instgrm-version="14"
+            style="margin:0; width:100%; background:transparent; border:0;"></blockquote>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="fade-up overflow-hidden rounded-3xl bg-white/5 ring-1 ring-white/10">
+        <div class="p-3">
+          <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/p/Citd-iZOFEi/" data-instgrm-version="14"
+            style="margin:0; width:100%; background:transparent; border:0;"></blockquote>
+        </div>
+      </div>
+
+      <!-- Card 4 -->
+      <div class="fade-up overflow-hidden rounded-3xl bg-white/5 ring-1 ring-white/10">
+        <div class="p-3">
+          <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/p/CgkSqtRul3t/" data-instgrm-version="14"
+            style="margin:0; width:100%; background:transparent; border:0;"></blockquote>
+        </div>
+      </div>
+
+      <!-- Card 5 -->
+      <div class="fade-up overflow-hidden rounded-3xl bg-white/5 ring-1 ring-white/10">
+        <div class="p-3">
+          <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/p/CfINtdhuHct/" data-instgrm-version="14"
+            style="margin:0; width:100%; background:transparent; border:0;"></blockquote>
+        </div>
+      </div>
+
+      <!-- Card 6 -->
+      <div class="fade-up overflow-hidden rounded-3xl bg-white/5 ring-1 ring-white/10">
+        <div class="p-3">
+          <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/p/Ce1WHF7uaCO/" data-instgrm-version="14"
+            style="margin:0; width:100%; background:transparent; border:0;"></blockquote>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
   <!-- Contato -->
   <section id="contato" class="py-16 md:py-20">
     <div class="mx-auto max-w-6xl px-4">
@@ -852,6 +934,39 @@ ${msg}`;
 
       window.open(montarLinkWhats(numero, texto), "_blank", "noopener");
     });
+
+    // Instagram 
+     // Instagram embeds (lazy load)
+  let _igEmbedLoaded = false;
+
+  function loadInstagramEmbeds() {
+    if (_igEmbedLoaded) return;
+    _igEmbedLoaded = true;
+
+    const s = document.createElement("script");
+    s.async = true;
+    s.defer = true;
+    s.src = "https://www.instagram.com/embed.js";
+    s.onload = () => {
+      try { window.instgrm?.Embeds?.process(); } catch(e) {}
+    };
+    document.body.appendChild(s);
+  }
+
+  // Carrega quando a seção entrar na tela
+  const igSection = document.getElementById("instagram");
+  if (igSection) {
+    const igObs = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          loadInstagramEmbeds();
+          igObs.disconnect();
+        }
+      });
+    }, { threshold: 0.12 });
+
+    igObs.observe(igSection);
+  }
   </script>
 </body>
 </html>
